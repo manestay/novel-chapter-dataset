@@ -1,0 +1,61 @@
+{% extends 'gutenberg/subnavbar.html' %}
+{% load base_extra %}
+{% load books_extra %}
+
+
+{% block books_header %}
+
+<p class="alert alert-info">
+<a href="http://www.gutenberg.org/" target="_blank">古腾堡工程</a>
+(Project Gutenberg，缩写：PG)，由志愿者参与，致力于文化作品的数字化归档，
+并鼓励创作发行电子书。该工程肇始于1971年，是最早的数字图书馆。
+其中的大部分书籍都是公有领域书籍的原本，古腾堡工程确保这些原本以开放文件格式自由流通，有利于长期保存，并可在各种计算机上自由阅读。
+大多数版本使用的语言是英语，但也有许多非英语作品。
+截至2017年6月，古腾堡工程声称提供超过54,000件馆藏。</p>
+
+<form id="gutenberg-search-form" class="form-inline" action="" method="get">
+    {{ filter_form.q }}
+    {{ filter_form.language }}
+    {{ filter_form.category }}
+    {{ filter_form.order_by }}
+    {{ filter_form.order }}
+    <button class="btn btn-primary" type="submit"><i class="fa fa-search">搜索</i></button>
+    <a class="btn" href="{% url 'gutenberg:index' %}"><i class="fa fa-undo">重置</i></a>
+</form>
+{% endblock %}
+
+
+{% block books_index %}
+<ul class='unstyled book-index'>
+{% for obj in page.object_list %}
+<li class="book-item" data-pk={{obj.pk}}>
+<div class="well book-card">
+    <div class="book-cover" title="{{obj.title}}">
+        {% if obj.cover %}
+        <a class="pjax" href="{{obj.get_absolute_url}}">
+            <img class='book-img img-rounded' src="{{obj.cover}}" alt="{{obj.title}}"/>
+        </a>
+        {% endif %}
+    </div>
+    <div class="book-info">
+        <a class="pjax" href="{{obj.get_absolute_url}}" title="{{obj.title}}">
+            {{ obj.title|shortzh:'30'}}
+        </a>
+        <div class="book-author">
+            {{ obj.authors.all|slice:":2"|join:","|shortzh:'30'}}
+        </div>
+    </div>
+    <div class='book-meta muted'>
+        {% block book_stat %}
+        <i class="fa fa-download" title='下载次数'></i>{{obj.downloads}}
+        {% endblock book_stat %}
+        <span class='douban'>
+            <span title="出版日期">{{obj.issued}}</span>
+        </span>
+    </div>
+</div>
+</li>
+{% endfor %}
+<div class='clearfix'></div>
+</ul>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% load books_extra %}
+<li id={{e.pk}} pk={{e.pk}} ext={{e.ext}}>
+
+<div>
+    <span class="badge badge">{{e.humansize}}</span>
+    <a href="{{ e.get_absolute_url }}"><span class="badge badge" title="{{e.basename}}">{{e.display}}</span></a>
+    {% if e.is_new %}
+    <span class="label label-info">新版本</span>
+    {% endif %}
+    <ul class="unstyled pull-right inline">
+    <li>
+    <a href="{% url 'edition' e.pk %}">
+        <small>{{e.talks.count}}条评论</small>
+        <i class="icon-comment icon-white"></i>
+    </a>
+    </li>
+    </ul>
+</div>
+<div class="btn-toolbar">
+{% if user.id %}
+    {% include 'gutenberg/edition_btns.html' %}
+{% else %}
+    {% include 'books/edition_btns_guest.html' %}
+{% endif %}
+</div>
+</li>

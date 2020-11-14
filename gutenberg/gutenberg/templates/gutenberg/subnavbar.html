@@ -1,0 +1,18 @@
+{% extends 'layout.html' %}
+{% load base_extra %}
+{% load books_extra %}
+
+
+{% block content %}
+
+{% block books_header %}
+{% endblock %}
+
+{% block books_index %}
+{% endblock %}
+
+{% block books_footer %}
+{% include 'gutenberg/pagination_inc.html' %}
+{% endblock %}
+
+{% endblock content %}

@@ -1,0 +1,226 @@
+{
+    "RDF": {
+        "ebook": {
+            "subject": [
+                {
+                    "Description": {
+                        "value": "Family life -- Juvenile fiction",
+                        "memberOf": null
+                    }
+                },
+                {
+                    "Description": {
+                        "memberOf": null,
+                        "value": "Voyages and travels -- Juvenile fiction"
+                    }
+                },
+                {
+                    "Description": {
+                        "memberOf": null,
+                        "value": "PR"
+                    }
+                },
+                {
+                    "Description": {
+                        "memberOf": null,
+                        "value": "PZ"
+                    }
+                }
+            ],
+            "type": {
+                "Description": {
+                    "value": "Text",
+                    "memberOf": null
+                }
+            },
+            "hasFormat": [
+                {
+                    "file": {
+                        "modified": "2016-11-04T02:52:05.842547",
+                        "format": {
+                            "Description": {
+                                "value": "application/epub+zip",
+                                "memberOf": null
+                            }
+                        },
+                        "extent": "190216",
+                        "isFormatOf": null
+                    }
+                },
+                {
+                    "file": {
+                        "isFormatOf": null,
+                        "extent": "190216",
+                        "modified": "2016-11-04T02:52:06.208530",
+                        "format": {
+                            "Description": {
+                                "memberOf": null,
+                                "value": "application/epub+zip"
+                            }
+                        }
+                    }
+                },
+                {
+                    "file": {
+                        "isFormatOf": null,
+                        "extent": "12312",
+                        "format": {
+                            "Description": {
+                                "memberOf": null,
+                                "value": "application/rdf+xml"
+                            }
+                        },
+                        "modified": "2016-11-10T05:18:40.238302"
+                    }
+                },
+                {
+                    "file": {
+                        "isFormatOf": null,
+                        "format": {
+                            "Description": {
+                                "value": "text/plain",
+                                "memberOf": null
+                            }
+                        },
+                        "modified": "2016-11-04T02:52:05.113569",
+                        "extent": "475960"
+                    }
+                },
+                {
+                    "file": {
+                        "format": [
+                            {
+                                "Description": {
+                                    "memberOf": null,
+                                    "value": "text/plain; charset=us-ascii"
+                                }
+                            },
+                            {
+                                "Description": {
+                                    "value": "application/zip",
+                                    "memberOf": null
+                                }
+                            }
+                        ],
+                        "modified": "2014-03-19T20:25:06",
+                        "isFormatOf": null,
+                        "extent": "177281"
+                    }
+                },
+                {
+                    "file": {
+                        "extent": "180759",
+                        "isFormatOf": null,
+                        "format": [
+                            {
+                                "Description": {
+                                    "memberOf": null,
+                                    "value": "application/zip"
+                                }
+                            },
+                            {
+                                "Description": {
+                                    "value": "text/html; charset=iso-8859-1",
+                                    "memberOf": null
+                                }
+                            }
+                        ],
+                        "modified": "2014-03-19T20:25:06"
+                    }
+                },
+                {
+                    "file": {
+                        "modified": "2014-03-19T20:24:12",
+                        "isFormatOf": null,
+                        "extent": "475988",
+                        "format": {
+                            "Description": {
+                                "memberOf": null,
+                                "value": "text/plain; charset=us-ascii"
+                            }
+                        }
+                    }
+                },
+                {
+                    "file": {
+                        "format": {
+                            "Description": {
+                                "memberOf": null,
+                                "value": "application/x-mobipocket-ebook"
+                            }
+                        },
+                        "modified": "2016-11-04T02:52:08.536520",
+                        "isFormatOf": null,
+                        "extent": "791260"
+                    }
+                },
+                {
+                    "file": {
+                        "format": {
+                            "Description": {
+                                "value": "text/html; charset=iso-8859-1",
+                                "memberOf": null
+                            }
+                        },
+                        "modified": "2014-03-19T20:24:24",
+                        "isFormatOf": null,
+                        "extent": "504553"
+                    }
+                },
+                {
+                    "file": {
+                        "format": {
+                            "Description": {
+                                "memberOf": null,
+                                "value": "application/x-mobipocket-ebook"
+                            }
+                        },
+                        "isFormatOf": null,
+                        "extent": "791252",
+                        "modified": "2016-11-04T02:52:10.861419"
+                    }
+                }
+            ],
+            "creator": {
+                "agent": {
+                    "webpage": null,
+                    "alias": [
+                        "Thomas, Elizabeth",
+                        "Mead, L. T.",
+                        "Meade, Lillie",
+                        "Meade, Elizabeth Thomasina",
+                        "Smith, Elizabeth Thomasina Meade",
+                        "Meade, Mrs. L. T."
+                    ],
+                    "deathdate": "1914",
+                    "name": "Meade, L. T.",
+                    "birthdate": "1854"
+                }
+            },
+            "issued": "2004-11-01",
+            "publisher": "Project Gutenberg",
+            "rights": "Public domain in the USA.",
+            "license": null,
+            "downloads": "15",
+            "title": "The Children's Pilgrimage",
+            "bookshelf": {
+                "Description": {
+                    "value": "Children's Fiction",
+                    "memberOf": null
+                }
+            },
+            "language": {
+                "Description": {
+                    "value": "en"
+                }
+            }
+        },
+        "Work": {
+            "comment": "Archives containing the RDF files for *all* our books can be downloaded at            http://www.gutenberg.org/wiki/Gutenberg:Feeds#The_Complete_Project_Gutenberg_Catalog",
+            "license": null
+        },
+        "Description": {
+            "description": "en.wikipedia"
+        }
+    }
+}

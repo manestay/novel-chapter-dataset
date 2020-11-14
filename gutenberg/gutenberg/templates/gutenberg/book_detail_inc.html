@@ -1,0 +1,124 @@
+{% extends 'split_inc.html' %}
+{% load base_extra %}
+{% load books_extra %}
+
+{% block left %}
+<div class="margin-medium well">
+
+    {% if pjax %}
+    <button id="pjax-close" type="button" class="close" tabindex="-1"
+        data-dismiss="modal" aria-hidden="true">&times;</button>
+    {% endif %}
+
+    <h2>{{obj.title|shortzh:'100'}}</h2>
+
+    <table class="table table-hover">
+      <tbody>
+        <tr>
+          <th>作者</th>
+          <td><ul class="unstyled inline">{% for author in obj.authors.all %}<li>{{author.name}}</li>{% endfor %}</ul></td>
+        </tr>
+        <tr>
+            <th>语言</th>
+            <td><ul class="unstyled inline">{% for language in obj.languages.all %}<li>{{language.name}}</li>{% endfor %}</ul></td>
+        </tr>
+        <tr>
+            <th>类别</th>
+            <td>{{obj.category}}</td>
+        </tr>
+        <tr>
+            <th>发布日期</th>
+            <td>{{obj.issued}}</td>
+        </tr>
+        <tr>
+            <th>版权状态</th>
+            <td>Public domain in the USA.</td>
+        </tr>
+        <tr>
+            <th>过去30天下载次数</th>
+            <td>{{obj.downloads}}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    {% if obj.subjects.all.count  %}
+    <h4>相关主题</h4>
+    <ul class='unstyled inline well' id="book-tags">
+        {% for s in obj.subjects.all %}
+        <li><a href="{% url 'gutenberg:subject' s.pk %}">{{s}}</a></li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if obj.bookshelves.all.count  %}
+    <h4>类似书籍</h4>
+    <ul class='unstyled inline well' id="book-tags">
+        {% for s in obj.bookshelves.all %}
+        <li><a href="{% url 'gutenberg:bookshelf' s.pk %}">{{s}}</a></li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+
+{% if user.id %}
+
+<div class="alert alert-info">点击文件名可直接进入古腾堡网站查看或下载文件, 不占用本站下载额度. 推送会消耗额度.</div>
+
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>文件</th>
+      <th>推送</th>
+      <th>大小</th>
+    </tr>
+  </thead>
+  <tbody>
+{% for e in obj.file_set.all %}
+    <tr>
+      <td><a target="_blank" href="{{e.uri}}">{{e.name}}</a></td>
+      <td>
+
+{% if can_push and balance_today %}
+<div class="btn-group">
+    {% with user.device_mails.first as default_device_mail %}
+        {% if pushmail %}
+        <button data-pk="{{e.pk}}" data-pushmail="{{default_device_mail}}"
+            class='pushmail-required book-push gutenberg btn btn-mini {% if e.id in pushs %}btn-inverse{% else %}btn-success{% endif %}'>
+            <i class="fa fa-paper-plane" aria-hidden="true"></i>推送<span class="push-num">{{e.push_count}}</span>
+        </button>
+        {% else %}
+        <a class='btn btn-mini {% if e.id in pushs %}btn-inverse{% else %}btn-success{% endif %}' href="{% url 'accounts:push' %}">
+            <i class="fa fa-paper-plane" aria-hidden="true"></i>推送
+        </a>
+        {% endif %}
+        <button class="btn btn-mini {% if e.id in pushs %}btn-inverse{% else %}btn-success{% endif %} dropdown-toggle" data-toggle="dropdown">
+            <span class="caret"></span>
+        </button>
+    {% endwith %}
+    <ul class="dropdown-menu">
+        {% for device_mail in user.device_mails %}
+        <li><a data-pk="{{e.pk}}" data-pushmail="{{device_mail}}" class="book-push gutenberg" href="#"><i class="fa fa-paper-plane"></i>推送到 {{device_mail}} {% if forloop.first %}(默认){% endif %}</a></li>
+        {% endfor %}
+        <li class="divider"></li>
+        <li><a target="_blank" href="{% url 'accounts:profile' user.username 'push' %}"><i class="fa fa-align-left"></i>推送状态</a></li>
+        <li><a target="_blank" href="{% url 'accounts:push' %}"><i class="fa fa-cog"></i>设置</a></li>
+    </ul>
+</div>
+{% endif %}
+
+
+      </td>
+      <td>{{e.humansize}}</td>
+    </tr>
+{% endfor %}
+  </tbody>
+</table>
+
+{% else %}
+<small>
+    <a href="{% url 'accounts:signin' %}">登录</a>
+</small>
+{% endif %}
+
+</div>
+{% endblock %}

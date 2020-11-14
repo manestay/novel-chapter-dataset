@@ -1,0 +1,10 @@
+{% extends "layout.html" %}
+
+{% block title %}readfree.me-{{obj.title}}{% endblock %}
+{% block tc_title %}{{obj.title}}{% endblock %}
+{% block tc_desc %}{{obj.summary}}{% endblock %}
+{% block tc_image %}{{obj.image}}{% endblock %}
+
+{% block content %}
+{% include 'gutenberg/book_detail_inc.html' %}
+{% endblock %}

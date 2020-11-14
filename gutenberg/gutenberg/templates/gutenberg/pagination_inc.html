@@ -1,0 +1,34 @@
+{% if pager.num_pages > 1 %}
+<div class="pagination pagination-centered">
+    <ul>
+        {% if page.has_previous %}
+        <li><a title='上一页' href="?page={{ page.previous_page_number }}{% if querystring %}&{{querystring}}{% endif %}">&laquo;</a></li>
+        {% else %}
+        <li class='disabled'><span>&laquo;</span></li>
+        {% endif %}
+
+        {% for i in page_range %}
+            {% if i == 0 %}
+                <li class="hidden-phone"><span>...</span></li>
+            {% elif i == page.number %}
+                <li class='active'><span>{{i}}</span></li>
+            {% else %}
+                <li class="hidden-phone"><a href="?page={{i}}{% if querystring %}&{{querystring}}{% endif %}">{{i}}</a></li>
+            {% endif %}
+        {% endfor %}
+
+        {% if page.has_next %}
+        <li><a title='下一页' href="?page={{ page.next_page_number }}{% if querystring %}&{{querystring}}{% endif %}">&raquo;</a></li>
+        {% else %}
+        <li class='disabled'><span>&raquo;</span></li>
+        {% endif %}
+        <form id="go-to" class="form-inline pull-right" action="" method="get">
+            <input class="input-mini" id="id_goto" name="page" type="number"
+                min="1" max="{{pager.num_pages}}" value="{{go}}">
+            <button type="submit" class="btn btn-small">
+                <i class="icon-random"></i>
+            </button>
+        </form>
+    </ul>
+</div>
+{% endif %}
