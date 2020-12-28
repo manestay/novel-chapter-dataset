@@ -21,7 +21,7 @@ from scrape_lib import *
 from scrape_vars import *
 
 PICKLE_NAME = 'pks/raw_texts.pk'
-SOURCES = ['sparknotes', 'gradesaver', 'cliffsnotes', 'pinkmonkey', 'novelguide', 'bookwolf']
+SOURCES = ['gradesaver', 'cliffsnotes', 'pinkmonkey', 'novelguide', 'bookwolf']
 SUMMARY_PATHS = ['pks/summaries_{}.pk'.format(x) for x in SOURCES]
 
 H_TAGS = set(['h1', 'h2', 'h3', 'h4', 'h5', 'center'])
@@ -303,10 +303,8 @@ def get_book_sections(title, catalog, book_soup=None, debug=False, encoding='utf
         book = _get_book_sections(title, catalog, book_soup=soup, debug=debug)
         return book
     elif title == 'Oliver Twist':
-        soup = get_soup(catalog[title]['url'][0], encoding=encoding)
+        soup = get_soup(catalog[title]['url'][0], encoding='utf-8')
         soup.find_all('h4')[-1].name = 'p'
-        soup.find('h3', align='center', text=re.compile('.*CHAPTER X.*')).next_sibling.next_sibling.decompose()
-        soup.find('h3', align='center', text=re.compile('.*CHAPTER XXVII.*')).next_sibling.next_sibling.decompose()
         return _get_book_sections(title, catalog, book_soup=soup, debug=debug)
     elif title == "Persuasion":
         soup = get_soup(catalog[title]['url'][0], encoding=encoding)
