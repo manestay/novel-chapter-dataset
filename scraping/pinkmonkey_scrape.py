@@ -115,13 +115,15 @@ def process_story(link, title=None, get_next=True, find_continued=False):
         lines = find_all_stripped(['p', 'h4'], soup, RE_SUMM_CONTINUED)
         if not lines:
             return []
+    ### specific edge cases
     elif 'WhiteFang' in link:
         lines = find_all_stripped(['p', 'h4'], soup, RE_CHAP) + find_all_stripped(['p', 'h4'], soup, RE_SUMM)
     elif 'Ulysses' in link:
         lines = find_all_stripped('p', soup, RE_SUMM_3)
-    if 'pmKidnapped16' in link:
+    elif 'pmKidnapped16' in link:
         find_all_stripped(['p', 'h4'], soup, RE_SUMM)[0].extract()
         lines = find_all_stripped(['p', 'h4'], soup, RE_CHAP)
+    ###
     else:
         lines = find_all_stripped(['p', 'h4'], soup, RE_SUMM) or find_all_stripped(['p', 'h4'], soup, RE_SUMM_2) or \
                 find_all_stripped(['p', 'h4'], soup, RE_CHAP)
@@ -386,6 +388,7 @@ def get_summaries(page_title_map, out_name, use_pickled=False, archived=False, u
 
         if not sect_summs:
             print('    Cannot process {}'.format(url))
+            # NOTE: expected to reach here for barrons Oliver Twist and barrons The Secret Sharer
             continue
 
         book_summ = BookSummary(title=title, author=author, genre=None, plot_overview=None, source=source,
