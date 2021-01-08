@@ -92,7 +92,7 @@ def get_section_summary(url, base_url, archived=False, update_old=False):
     analysis_found = False
     soup_all = get_soup(url)
     soup = soup_all.find(class_='copy')
-    if not soup: # this happens if archive is out of date
+    if not soup: # this happens if out of date, need to update the archive.org version
         print(f'{url} NO COPY CLASS!')
         return []
     children = list(soup.children)
@@ -202,7 +202,6 @@ def get_summaries(books_list, base_url, out_name, use_pickled=False, archived=Fa
                 url = get_archived(get_orig_url(url), update_old)
             summary = get_section_summary(url, base_url, archived, update_old)
             section_summaries.append((section_name, summary))
-
         bs = BookSummary(title=book,
                          author=author,
                          genre=None,  # TODO: Implement retrieving genre from external source
