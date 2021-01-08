@@ -51,7 +51,6 @@ parser.add_argument('--out_name', '-o', help='out name (overrides default)')
 parser.add_argument('--use-pickled', action='store_true', help='use existing (partial) pickle')
 
 
-
 def chapter_resets(chapter_titles):
     prev_num = 0
     for title in chapter_titles:

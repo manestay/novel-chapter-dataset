@@ -11,6 +11,7 @@ import argparse
 import os
 import re
 import sys
+import time
 import urllib.parse
 
 import dill as pickle
@@ -50,6 +51,9 @@ parser.add_argument('--use-pickled', action='store_true', help='use existing (pa
 parser.add_argument('--full', action='store_true', help='get all books, not just those in Gutenberg')
 parser.add_argument('--catalog', default=CATALOG_NAME, help='get all books, not just those in Gutenberg')
 parser.add_argument('--update-old', action='store_true', help='update out-of-date archived version')
+parser.add_argument('--save-every', default=5, type=int, help='interval to save pickled file')
+parser.add_argument('--sleep', default=0, type=int, help='sleep time between scraping each book')
+
 
 def get_pages_titles(index_pages, books_list, title_set=None):
     book_pages = []
@@ -283,7 +287,7 @@ def process_next_link(link, archived, update_old):
     for url, title in url_title_map.items():
         summs = process_story(url, title)
         for summ in summs:
-            print(' ', summ[0])
+            # print(' ', summ[0])
             if summ[1]:  # not empty text
                 section_summs.append(summ)
 
@@ -327,7 +331,8 @@ def process_story_link(link, archived, update_old):
     return section_summs
 
 
-def get_summaries(page_title_map, out_name, use_pickled=False, archived=False, update_old=False):
+def get_summaries(page_title_map, out_name, use_pickled=False, archived=False, update_old=False,
+                  save_every=5, sleep=0):
     if use_pickled and os.path.exists(out_name):
         with open(out_name, 'rb') as f1:
             book_summaries = pickle.load(f1)
@@ -344,6 +349,8 @@ def get_summaries(page_title_map, out_name, use_pickled=False, archived=False, u
             source = 'monkeynotes'
         if (title, source) in done:
             continue
+        if sleep:
+            time.sleep(sleep)
         if archived:
             page = get_archived(page, update_old)
         print('processing', title, page)
@@ -385,7 +392,7 @@ def get_summaries(page_title_map, out_name, use_pickled=False, archived=False, u
                                 section_summaries=sect_summs)
         book_summaries.append(book_summ)
         num_books = len(book_summaries)
-        if num_books > 1 and num_books % 5 == 0:
+        if num_books > 1 and num_books % save_every == 0:
             with open(out_name, 'wb') as f:
                 pickle.dump(book_summaries, f)
             print("Done scraping {} books".format(num_books))
@@ -602,7 +609,7 @@ if __name__ == "__main__":
         print('{} book pages from {}'.format(len(d), books_list))
     print('{} book pages total'.format(len(page_title_map)))
     book_summaries = get_summaries(page_title_map, args.out_name, args.use_pickled, args.archived,
-                                   args.update_old)
+                                   args.update_old, args.save_every, args.sleep)
     # with open(args.out_name, 'rb') as f:
     #     book_summaries = pickle.load(f)
     book_summaries_overlap = gen_gutenberg_overlap(book_summaries, catalog, filter_plays=True)

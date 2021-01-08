@@ -17,6 +17,7 @@ import argparse
 import logging
 import os
 import re
+import time
 import urllib.parse
 
 import dill as pickle
@@ -41,13 +42,14 @@ H3H4 = ['h3', 'h4']
 parser = argparse.ArgumentParser(description='scrape sparknotes')
 parser.add_argument('out_name', nargs='?', default=OUT_NAME_ALL, help='name of pickle file for all summaries')
 parser.add_argument('out_name_overlap', nargs='?', default=OUT_NAME_OVERLAP, help='name of pickle file for overlapping summaries')
-parser.add_argument('--sleep_time', type=float, default=SLEEP, help='sleep time between calls to url')
 parser.add_argument('--archived', action='store_true', help='always use archived versions of scripts')
 parser.add_argument('--use-pickled', action='store_true', help='use existing (partial) pickle')
 parser.add_argument('--full', action='store_true', help='get all books, not just those in Gutenberg')
 parser.add_argument('--catalog', default=CATALOG_NAME, help='get all books, not just those in Gutenberg')
 parser.add_argument('--update-old', action='store_true', help='update out-of-date archived version')
 parser.add_argument('--verbose', action='store_true', help='verbose output')
+parser.add_argument('--save-every', default=5, type=int, help='interval to save pickled file')
+parser.add_argument('--sleep', default=SLEEP, type=int, help='sleep time between scraping each book')
 
 
 def get_author(soup):
@@ -251,8 +253,8 @@ def get_section_summary(section_url, archived=False, update_old=False, retry=0, 
     return section_name, summaries
 
 
-def get_summaries(guides_page, base_url, out_name, flatten=True, use_pickled=False, sleep=SLEEP,
-                  title_set=None, archived=False, update_old=False):
+def get_summaries(guides_page, base_url, out_name, use_pickled=False, archived=False,
+                  update_old=False, save_every=5, title_set=None, sleep=SLEEP, flatten=True):
     def add_summaries(url, section_summaries, flatten=True):
         # helper function
         summary_obj = get_section_summary(url, archived, update_old)
@@ -323,7 +325,7 @@ def get_summaries(guides_page, base_url, out_name, flatten=True, use_pickled=Fal
 
         book_summaries.append(bs)
         num_books = len(book_summaries)
-        if num_books > 1 and num_books % 5 == 0:
+        if num_books > 1 and num_books % save_every == 0:
             with open(out_name, 'wb') as f:
                 pickle.dump(book_summaries, f)
             print("Done scraping {} books".format(num_books))
@@ -550,9 +552,9 @@ if __name__ == "__main__":
     # else:
     guides_page = GUIDES_PAGE
     base_url = BASE_URL
-    book_summaries = get_summaries(guides_page, base_url, args.out_name, use_pickled=args.use_pickled,
-                                   title_set=title_set, sleep=args.sleep_time, archived=args.archived,
-                                   update_old=args.update_old)
+    book_summaries = get_summaries(guides_page, base_url, args.out_name, args.use_pickled,
+                                   args.archived, args.update_old, args.save_every,
+                                   title_set=title_set, sleep=args.sleep_time)
     # with open(args.out_name, 'rb') as f:
     #     book_summaries = pickle.load(f)
 

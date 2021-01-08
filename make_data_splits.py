@@ -402,7 +402,7 @@ if __name__ == "__main__":
     pair_ids = get_pair_ids(base_d_expanded)
     out_name = os.path.join(args.out_dir, 'pair_ids.json')
     with open(out_name, 'w') as f:
-        json.dump(pair_ids, f)
+        json.dump(pair_ids, f, indent=4)
     print('wrote to', out_name)
 
     validate_pair_ids(pair_ids, args.pair_ids_expected)

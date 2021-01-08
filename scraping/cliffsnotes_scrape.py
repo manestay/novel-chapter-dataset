@@ -7,16 +7,17 @@ Optional flags to 1) use the archived version of pages, 2) scrape all books, ins
 """
 
 import argparse
-import urllib.parse
 import os
+import time
+import urllib.parse
 
 import dill as pickle
 
 from archive_lib import get_archived, get_orig_url
-from scrape_lib import BookSummary, get_absolute_links, get_soup, gen_gutenberg_overlap, standardize_sect_title, roman_to_int, \
-                       standardize_title, load_catalog
+from scrape_lib import (BookSummary, gen_gutenberg_overlap, get_absolute_links,
+                        get_soup, load_catalog, roman_to_int,
+                        standardize_sect_title, standardize_title)
 from scrape_vars import CATALOG_NAME, NON_NOVEL_TITLES
-
 
 PANE_NAME = 'medium-3 columns clear-padding-left clear-padding-for-small-only sidebar-navigation-gray'
 BASE_URL = 'https://www.cliffsnotes.com/'
@@ -33,6 +34,9 @@ parser.add_argument('--use-pickled', action='store_true', help='use existing (pa
 parser.add_argument('--full', action='store_true', help='get all books, not just those in Gutenberg')
 parser.add_argument('--catalog', default=CATALOG_NAME, help='get all books, not just those in Gutenberg')
 parser.add_argument('--update-old', action='store_true', help='update out-of-date archived version')
+parser.add_argument('--save-every', default=5, type=int, help='interval to save pickled file')
+parser.add_argument('--sleep', default=0, type=int, help='sleep time between scraping each book')
+
 
 def get_author(soup):
     written_by = soup.find(class_='title-wrapper').find('h2')
@@ -156,7 +160,7 @@ def get_section_summary(url, base_url, archived=False, update_old=False):
 
 
 def get_summaries(books_list, base_url, out_name, use_pickled=False, archived=False, title_set=None,
-                  update_old=False):
+                  update_old=False, save_every=5, sleep=0):
     if use_pickled and os.path.exists(out_name):
         with open(out_name, 'rb') as f1:
             book_summaries = pickle.load(f1)
@@ -177,6 +181,8 @@ def get_summaries(books_list, base_url, out_name, use_pickled=False, archived=Fa
     for i, (book, url) in enumerate(title_url_map.items()):
         if book in done:
             continue
+        if sleep:
+            time.sleep(sleep)
         if archived:
             url = get_orig_url(url)
             url = get_archived(url, update_old)
@@ -206,7 +212,7 @@ def get_summaries(books_list, base_url, out_name, use_pickled=False, archived=Fa
 
         book_summaries.append(bs)
         num_books = len(book_summaries)
-        if num_books > 1  and num_books % 5 == 0:
+        if num_books > 1  and num_books % save_every == 0:
             with open(out_name, 'wb') as f:
                 pickle.dump(book_summaries, f)
             print("Done scraping {} books".format(num_books))
@@ -337,7 +343,7 @@ if __name__ == "__main__":
 
     base_url = BASE_URL
     book_summaries = get_summaries(BOOKS_LIST, base_url, args.out_name, args.use_pickled,
-                                   args.archived, title_set, args.update_old)
+                                   args.archived, title_set, args.update_old, args.save_every, args.sleep)
     # with open(args.out_name, 'rb') as f:
     #     book_summaries = pickle.load(f)
     book_summaries_overlap = gen_gutenberg_overlap(book_summaries, catalog, filter_plays=True)

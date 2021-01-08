@@ -9,6 +9,7 @@ Optional flags to 1) use the archived version of pages, 2) scrape all books, ins
 import argparse
 import os
 import re
+import time
 import urllib.parse
 
 import dill as pickle
@@ -36,6 +37,8 @@ parser.add_argument('--use-pickled', action='store_true', help='use existing (pa
 parser.add_argument('--full', action='store_true', help='get all books, not just those in Gutenberg')
 parser.add_argument('--catalog', default=CATALOG_NAME, help='get all books, not just those in Gutenberg')
 parser.add_argument('--update-old', action='store_true', help='update out-of-date archived version')
+parser.add_argument('--save-every', default=5, type=int, help='interval to save pickled file')
+parser.add_argument('--sleep', default=0, type=int, help='sleep time between scraping each book')
 
 
 def get_author(soup):
@@ -144,7 +147,7 @@ def get_sections(soup, pane_name, base_url, archived=False, update_old=False):
 
 
 def get_summaries(books_list, base_url, out_name, pane_name, use_pickled=False, title_set=None,
-                  archived=False, update_old=False):
+                  archived=False, update_old=False, save_every=5, sleep=0):
     if use_pickled and os.path.exists(out_name) and os.path.getsize(out_name):
         with open(out_name, 'rb') as f1:
             book_summaries = pickle.load(f1)
@@ -170,6 +173,8 @@ def get_summaries(books_list, base_url, out_name, pane_name, use_pickled=False, 
     for i, (book, url) in enumerate(title_url_map.items()):
         if book in done:
             continue
+        if sleep:
+            time.sleep(sleep)
         if archived:
             url = get_archived(url, update_old)
         print('processing {} {}'.format(book, url))
@@ -182,7 +187,6 @@ def get_summaries(books_list, base_url, out_name, pane_name, use_pickled=False, 
         for (section_name, url) in sections:
             summary = get_section_summary(url)
             section_summaries.append((section_name, summary))
-
         bs = BookSummary(title=book,
                          author=author,
                          genre=None,  # TODO: Need to fix this and get genre from external source
@@ -192,7 +196,7 @@ def get_summaries(books_list, base_url, out_name, pane_name, use_pickled=False, 
         book_summaries.append(bs)
         num_books = len(book_summaries)
 
-        if num_books > 1 and num_books % 5 == 0:
+        if num_books > 1 and num_books % save_every == 0:
             print("Done scraping {} books".format(num_books))
             with open(out_name, 'wb') as f:
                 pickle.dump(book_summaries, f)
@@ -600,7 +604,7 @@ if __name__ == "__main__":
     books_list = BOOKS_LIST
     base_url = BASE_URL
     book_summaries = get_summaries(books_list, base_url, args.out_name, args.use_pickled, PANE_NAME,
-                                   title_set, archived=args.archived, update_old=args.update_old)
+                                   title_set, args.archived, args.update_old, args.save_every, args.sleep)
     # with open(args.out_name, 'rb') as f1:
     #     book_summaries = pickle.load(f1)
 

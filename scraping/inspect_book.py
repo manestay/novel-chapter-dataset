@@ -21,6 +21,8 @@ def find_dict(dd, title, action):
             print(i, title)
             to_pop = title
         if action == 'show':
+            if not book.section_summaries:
+                print('NO CHAPTERS')
             for ss in book.section_summaries:
                 print(ss[0], ss[1][0:5], '...')
     if action == 'del' and to_pop:
@@ -35,6 +37,8 @@ def find_list(dd, title, action, flag=''):
             if action == 'del':
                 dd.pop(i)
             elif action == 'show':
+                if not x.section_summaries:
+                    print('NO CHAPTERS')
                 for ss in x.section_summaries:
                     print(ss[0], ss[1][0][0:100], '...')
 
