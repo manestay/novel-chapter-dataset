@@ -380,8 +380,8 @@ if __name__ == "__main__":
             if error_sects and (title, source, error_sects) not in expected_errors:
                 print('DEBUG: error for book {} from source {}'.format(title, source))
                 print('sections in gutenberg', sorted(title_sect_map[title]))
-                print('sections in source', chaps_source)
-                print('sections not found:', sorted(error_sects))
+                print('sections in source   ', sorted(chaps_source))
+                print('sections not found   ', sorted(error_sects))
                 bs = book_summary.section_summaries
             # if title == 'Madame Bovary' and source == 'barrons':
             #     import pdb; pdb.set_trace()

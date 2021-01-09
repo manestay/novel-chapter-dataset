@@ -13,13 +13,13 @@ DAY = 1
 OLD_DATE = datetime(2018, 6, 1) # if archived version older than this, update
 
 def get_archived(page_url, update_old=False):
-    waybackpy_url_obj = waybackpy.Url(page_url, USER_AGENT)
     try:
+        waybackpy_url_obj = waybackpy.Url(page_url, USER_AGENT)
         archive_url_near = waybackpy_url_obj.near(year=YEAR, month=MONTH, day=DAY)
     except waybackpy.exceptions.WaybackError as e:
         try: # try again
             sleep(5)
-            # waybackpy_url_obj = update_archive(waybackpy_url_obj)
+            waybackpy_url_obj = waybackpy.Url(page_url, USER_AGENT)
             archive_url_near = waybackpy_url_obj.near(year=YEAR, month=MONTH, day=DAY)
         except waybackpy.exceptions.WaybackError as e:
             # print(e)
