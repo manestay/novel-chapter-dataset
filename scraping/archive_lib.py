@@ -7,8 +7,8 @@ import waybackpy
 USER_AGENT = "Mozilla/5.0 (Windows NT 5.1; rv:40.0) Gecko/20100101 Firefox/40.0"
 
 # get the nearest archived version to following date parameters
-YEAR = 2020
-MONTH = 6
+YEAR = 2021
+MONTH = 1
 DAY = 1
 OLD_DATE = datetime(2018, 6, 1) # if archived version older than this, update
 

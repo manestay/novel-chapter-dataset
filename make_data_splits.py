@@ -101,7 +101,8 @@ def validate_pair_ids(pair_ids, expected_name):
         print('\nWARNING: {} pair ids are found in collected summaries, but not in expected summaries'.format(len(extra)))
         for x in sorted(extra):
             print(x)
-
+    if missing or extra:
+        print('to fix, try deleting and rescraping the books with issues (see FAQ.md)')
 
 
 def get_section_titles(all_sections, sect, title=None):

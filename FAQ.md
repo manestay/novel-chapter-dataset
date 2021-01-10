@@ -23,11 +23,11 @@ DEBUG: error for book {title} from source {source}
 ```
 and corresponding printed chapters, try deleting the entry and rescraping.
 
-* For `scraping/cliffsnotes_scrape.py` the following messages means a page was improperly processed, and the book needs to be rescraped
+* For `scraping/cliffsnotes_scrape.py` the following messages means a page was improperly processed, and the book needs to be rescraped:
 ```
 {url} NO COPY CLASS!'
 ```
-* For `scraping/pinkmonkey_scrape.py` the following message means a page was improperly processed, and the book needs to be rescraped
+* For `scraping/pinkmonkey_scrape.py` the following message means a page was improperly processed, and the book needs to be rescraped:
 ```
 cannot find section titles on {url}
 ```

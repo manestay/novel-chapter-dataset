@@ -44,10 +44,14 @@ def find_list(dd, title, action, flag=''):
                 dd.pop(i)
             elif action == 'show':
                 for ss in x.section_summaries:
-                    try:
-                        print(ss[0], ss[1][0][0:100], '...')
-                    except IndexError:
-                        print(f'ERROR: {ss[0]} has no summary content')
+                    if isinstance(ss[1][0], tuple):
+                        for ss1 in ss[1]:
+                            print(ss1[0], ss1[1][0:100], '...')
+                    else:
+                        try:
+                            print(ss[0], ss[1][0][0:100], '...')
+                        except IndexError:
+                            print(f'ERROR: {ss[0]} has no summary content')
     return found
 
 
