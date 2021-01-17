@@ -1,6 +1,6 @@
 # scrape_all.sh
 # This script contains all commands to get the final data set.
-# Probably best to run each command one-by-one.
+# RECOMMENDED TO RUN EACH COMMAND IN TERMINAL, INSTEAD OF RUNNING THIS WHOLE SCRIPT.
 
 ## 0) Uncomment these optional flags to collect all books from all sources, and skip the filtering out
 ## that was done for the ACL 2020 publication. However, this has not been fully tested and you will
@@ -32,17 +32,15 @@ pip install -r requirements.txt
 ## -- update-old : if --archived, then updates archive link if out of date (be careful with this)
 PREFIX=pks/summaries_
 echo -e '\nbookwolf'
-python scraping/bookwolf_scrape.py ${PREFIX}bookwolf_all${EXT}.pk ${PREFIX}bookwolf${EXT}.pk --use-pickled --archived ${TAG}
+python scraping/bookwolf_scrape.py ${PREFIX}bookwolf_all${EXT}.pk ${PREFIX}bookwolf${EXT}.pk --use-pickled --archived ${TAG} --sleep 5
 echo -e '\ncliffsnotes'
-python scraping/cliffsnotes_scrape.py ${PREFIX}cliffsnotes_all${EXT}.pk ${PREFIX}cliffsnotes${EXT}.pk --use-pickled --archived ${TAG}
+python scraping/cliffsnotes_scrape.py ${PREFIX}cliffsnotes_all${EXT}.pk ${PREFIX}cliffsnotes${EXT}.pk --use-pickled --archived ${TAG} --sleep 5
 echo -e '\npinkmonkey'
-python scraping/pinkmonkey_scrape.py ${PREFIX}pinkmonkey_all${EXT}.pk ${PREFIX}pinkmonkey${EXT}.pk --use-pickled --archived ${TAG}
+python scraping/pinkmonkey_scrape.py ${PREFIX}pinkmonkey_all${EXT}.pk ${PREFIX}pinkmonkey${EXT}.pk --use-pickled --archived ${TAG} --sleep 5
 echo -e '\ngradesaver'
-python scraping/gradesaver_scrape.py ${PREFIX}gradesaver_all${EXT}.pk ${PREFIX}gradesaver${EXT}.pk --use-pickled --archived ${TAG}
+python scraping/gradesaver_scrape.py ${PREFIX}gradesaver_all${EXT}.pk ${PREFIX}gradesaver${EXT}.pk --use-pickled --archived ${TAG} --sleep 5
 echo -e '\nnovelguide'
-python scraping/novelguide_scrape.py ${PREFIX}novelguide_all${EXT}.pk ${PREFIX}novelguide${EXT}.pk --use-pickled --archived ${TAG}
-echo -e '\nsparknotes'
-python scraping/sparknotes_scrape.py ${PREFIX}sparknotes_all${EXT}.pk ${PREFIX}sparknotes${EXT}.pk =-use-pickled --archived ${TAG}
+python scraping/novelguide_scrape.py ${PREFIX}novelguide_all${EXT}.pk ${PREFIX}novelguide${EXT}.pk --use-pickled --archived ${TAG} --sleep 5
 
 ## 5) Collect raw texts from Project Gutenberg
 ## Gutenberg raw texts object has raw text of each book by chapter

@@ -34,7 +34,7 @@ parser.add_argument('--use-pickled', action='store_true', help='use existing (pa
 parser.add_argument('--full', action='store_true', help='get all books, not just those in Gutenberg')
 parser.add_argument('--catalog', default=CATALOG_NAME, help='get all books, not just those in Gutenberg')
 parser.add_argument('--update-old', action='store_true', help='update out-of-date archived version')
-parser.add_argument('--save-every', default=5, type=int, help='interval to save pickled file')
+parser.add_argument('--save-every', default=2, type=int, help='interval to save pickled file')
 parser.add_argument('--sleep', default=0, type=int, help='sleep time between scraping each book')
 
 
