@@ -31,8 +31,9 @@ and corresponding printed chapters, try deleting the entry and rescraping.
 ```
 cannot find section titles on {url}
 ```
+Also, the following books are expected to return errors for pinkmonkey: [The Secret Sharer, Oliver Twist, Siddhartha]. The errors happen because the index pages have chapters with named titles, instead of "Chapter/Book/Volume <number>". We do not currently fix them. So you can ignore these error messages.
 
-Note that `make_data_splits.py` should catch any cases of missing chapter summaries as well.
+* Note that `make_data_splits.py` should catch any cases of missing chapter summaries as well.
 
 ## Section 2b. Rescraping corrupted or incompletely scraped books
 Use `scraping/inspect_book.py` to delete the corrupted entries from the pickled file(s) and try again. To give an example, let's say "Far from the Madding Crowd" for source "gradesaver" is corrupted. Let's check the contents first:

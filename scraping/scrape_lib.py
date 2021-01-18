@@ -11,6 +11,8 @@ import string
 from bs4 import BeautifulSoup
 from collections import namedtuple
 from copy import deepcopy
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
 
 from number_lib import str_to_int, numword_to_int, int_to_roman, roman_to_int, get_numwords, RE_NUMWORD, numwords
 from scrape_vars import TO_DELETE, EXCLUDED_IDS, ALT_ORIG_MAP, CATALOG_NAME, CATALOG_RAW_NAME, \
@@ -27,7 +29,10 @@ RE_SPACE = re.compile(r'\s+')
 
 
 def get_soup(url, encoding=None, sleep=0):
-    page = requests.get(url)
+    s = requests.Session()
+    retries = Retry(total=4, backoff_factor=.3)
+    s.mount('http://', HTTPAdapter(max_retries=retries))
+    page = s.get(url)
     if encoding:
         page.encoding = encoding
     if sleep:
