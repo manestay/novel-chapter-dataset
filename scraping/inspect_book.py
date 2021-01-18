@@ -13,6 +13,7 @@ parser = ArgumentParser()
 parser.add_argument('source')
 parser.add_argument('title')
 parser.add_argument('action', choices=['del', 'show'])
+parser.add_argument('--all', action='store_true', default=False)
 
 def find_dict(dd, title, action):
     found = False
@@ -57,13 +58,14 @@ def find_list(dd, title, action, flag=''):
 
 def get_fname(args):
     flag = ''
+    all = '_all' if args.all else ''
     if args.source == 'raw_texts':
         fname = 'pks/raw_texts.pk'
     elif args.source == 'barrons' or args.source == 'monkeynotes':
         flag = args.source
-        fname = 'pks/summaries_pinkmonkey_all.pk'
+        fname = f'pks/summaries_pinkmonkey{all}.pk'
     else:
-        fname = f'pks/summaries_{args.source}_all.pk'
+        fname = f'pks/summaries_{args.source}{all}.pk'
     return flag, fname
 
 if __name__ == "__main__":
