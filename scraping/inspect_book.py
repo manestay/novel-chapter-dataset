@@ -9,11 +9,16 @@ import dill as pickle
 # FNAME = 'pks/summaries_sparknotes_all.pk'
 # TITLE = "Don Quixote"
 
+# note these sources are not exactly the same as those in scraping/gutenberg_scrape.py, since
+# we split the 'pinkmonkey' sources
+SOURCES = ['gradesaver', 'cliffsnotes', 'barrons', 'monkeynotes', 'novelguide', 'bookwolf']
+source_choices = SOURCES + ['all'] # all scans all sources
+
 parser = ArgumentParser()
-parser.add_argument('source')
+parser.add_argument('source', choices=source_choices)
 parser.add_argument('title')
 parser.add_argument('action', choices=['del', 'show'])
-parser.add_argument('--all', action='store_true', default=False)
+parser.add_argument('--use_all', action='store_true', default=False, help='use *_all.pk instead')
 
 def find_dict(dd, title, action):
     found = False
@@ -58,7 +63,7 @@ def find_list(dd, title, action, flag=''):
 
 def get_fname(args):
     flag = ''
-    all = '_all' if args.all else ''
+    all = '_all' if args.use_all else ''
     if args.source == 'raw_texts':
         fname = 'pks/raw_texts.pk'
     elif args.source == 'barrons' or args.source == 'monkeynotes':
@@ -68,8 +73,7 @@ def get_fname(args):
         fname = f'pks/summaries_{args.source}{all}.pk'
     return flag, fname
 
-if __name__ == "__main__":
-    args = parser.parse_args()
+def main(args):
     flag, fname = get_fname(args)
     with open(fname, 'rb') as f:
         dd = pickle.load(f)
@@ -90,3 +94,16 @@ if __name__ == "__main__":
             print('deleted')
         else:
             print('nothing modified')
+
+
+if __name__ == "__main__":
+    args = parser.parse_args()
+    if args.source == 'all':
+        for source in SOURCES:
+            print(f'source: {source}')
+            print('*' * 50)
+            args.source = source
+            main(args)
+            print()
+    else:
+        main(args)
