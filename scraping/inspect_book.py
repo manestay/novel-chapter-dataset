@@ -12,13 +12,14 @@ import dill as pickle
 # note these sources are not exactly the same as those in scraping/gutenberg_scrape.py, since
 # we split the 'pinkmonkey' sources
 SOURCES = ['gradesaver', 'cliffsnotes', 'barrons', 'monkeynotes', 'novelguide', 'bookwolf']
-source_choices = SOURCES + ['all'] # all scans all sources
+source_choices = SOURCES + ['all']  # all scans all sources
 
 parser = ArgumentParser()
 parser.add_argument('source', choices=source_choices)
 parser.add_argument('title')
 parser.add_argument('action', choices=['del', 'show'])
 parser.add_argument('--use_all', action='store_true', default=False, help='use *_all.pk instead')
+
 
 def find_dict(dd, title, action):
     found = False
@@ -73,6 +74,7 @@ def get_fname(args):
         fname = f'pks/summaries_{args.source}{all}.pk'
     return flag, fname
 
+
 def main(args):
     flag, fname = get_fname(args)
     with open(fname, 'rb') as f:
@@ -87,6 +89,9 @@ def main(args):
             print(f'could not find {args.title} in {fname}')
             confirm = 'n'
         else:
+            if not args.use_all:
+                print(f'NOTE: If you are trying to rescrape a book, run this command with --use-all'
+                      ' so you can delete from the raw pk instead.')
             confirm = input(f'confirm delete of {args.title} from {fname} (y/n)? ')
         if confirm == 'y':
             with open(fname, 'wb') as f:
