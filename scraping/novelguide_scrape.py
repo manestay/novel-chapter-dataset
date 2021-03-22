@@ -60,6 +60,7 @@ parser.add_argument('out_name', nargs='?', default=OUT_NAME_ALL, help='name of p
 parser.add_argument('out_name_overlap', nargs='?', default=OUT_NAME_OVERLAP,
                     help='name of pickle file for overlapping summaries')
 parser.add_argument('--archived', action='store_true', help='always use archived versions of scripts')
+parser.add_argument('--archived-list', action='store_true', help='use archived books list page')
 parser.add_argument('--use-pickled', action='store_true', help='use existing (partial) pickle')
 parser.add_argument('--full', action='store_true', help='get all books, not just those in Gutenberg')
 parser.add_argument('--catalog', default=CATALOG_NAME, help='get all books, not just those in Gutenberg')
@@ -955,10 +956,10 @@ if __name__ == "__main__":
         print('limiting to books from', CATALOG_NAME)
         title_set = set(catalog.keys())
 
-    # if args.archived:
-    #     books_list = get_archived(BOOKS_LIST)
-    # else:
-    books_list = BOOKS_LIST
+    if args.archived_list:
+        books_list = get_archived(BOOKS_LIST)
+    else:
+        books_list = BOOKS_LIST
     title_url_map = get_title_url_map(books_list, title_set=title_set)
     print('{} book pages total'.format(len(title_url_map)))
     book_summaries = get_summaries(title_url_map, args.out_name, args.use_pickled, args.archived,
