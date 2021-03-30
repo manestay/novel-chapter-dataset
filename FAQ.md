@@ -36,15 +36,18 @@ Also, the following books are expected to return errors for pinkmonkey: [The Sec
 * Note that `make_data_splits.py` should catch any cases of missing chapter summaries as well.
 
 ## Section 2b. Rescraping corrupted or incompletely scraped books
-Use `scraping/inspect_book.py` to delete the corrupted entries from the pickled file(s) and try again. To give an example, let's say "Far from the Madding Crowd" for source "gradesaver" is corrupted. Let's check the contents first:
+Use `scraping/inspect_book.py` to delete the corrupted entries from the pickled file(s) and try again. To give an example, let's say "Far from the Madding Crowd" for source "gradesaver" is corrupted. Let's check the contents of the raw pk, instead of the processed, first:
 ```
-python scraping/inspect_book.py gradesaver "Far from the Madding Crowd" show
+python scraping/inspect_book.py gradesaver "Far from the Madding Crowd" show --use_all
 ```
 This will print out the contents of that book, and displays error messages if the book was not found, or if any of the scraped chapter summaries is empty.
 
 To delete, change the flag and confirm with 'y':
 ```
-python scraping/inspect_book.py gradesaver "Far from the Madding Crowd" del
+python scraping/inspect_book.py gradesaver "Far from the Madding Crowd" del --use_all
 ```
 
 Then, run the same command from scrape_all.sh for that source again.
+
+## Miscellaneous
+* novelguide.com is sometimes down. You can add the `--archived-list` option when running `scraping/novelguide_scrape.py` to get the index from the archived version. This overrides the default behavior, we use the live index for all scripts (since we assume that sites might update the links).
