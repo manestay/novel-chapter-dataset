@@ -1,4 +1,5 @@
-This repository contains scripts to collect book chapter summaries, as well as their corresponding chapter texts.
+This repository contains scripts to collect book chapter summaries, as well as their corresponding chapter texts. The dataset is intended for use by AI researchers who are building automatic summarization systems.
+
 * summaries: novelguide, cliffsnotes, pinkmonkey\*, bookwolf, gradesaver
 * full text: Project Gutenberg
 
