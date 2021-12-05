@@ -21,7 +21,7 @@ from scrape_vars import CATALOG_NAME, NON_NOVEL_TITLES
 
 PANE_NAME = 'medium-3 columns clear-padding-left clear-padding-for-small-only sidebar-navigation-gray'
 BASE_URL = 'https://www.cliffsnotes.com/'
-BOOKS_LIST = 'https://www.cliffsnotes.com/literature?filter=ShowAll&sort=TITLE'
+BOOKS_LIST = 'https://www.cliffsnotes.com/literature%3Ffilter=ShowAll&sort=TITLE'
 OUT_NAME_ALL = 'pks/summaries_cliffsnotes_all.pk'
 OUT_NAME_OVERLAP = 'pks/summaries_cliffsnotes.pk'
 
