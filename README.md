@@ -17,4 +17,4 @@ See `FAQ.md` for common issues and crashes. Please create an issue on Github if 
 These scripts were last ran by the authors on 29 Mar 2021, on archived version only.
 
 # Alternatives
-A related book summarization dataset, maintained by a corporation with more resources (as opposed to us -overworked- highly-motivated PhD students) is https://github.com/salesforce/booksum. Noting our bias towards our own dataset being what everyone should use, we recommend that one too. We'll be announcing a joint effort between authors of their work and ours soon!
+A related book summarization dataset, maintained by a corporation with more resources (as opposed to us ~~overworked~~ highly-motivated PhD students) is https://github.com/salesforce/booksum. Noting our bias towards our own dataset being what everyone should use, we recommend that one too. We'll be announcing a joint effort between authors of their work and ours soon!
