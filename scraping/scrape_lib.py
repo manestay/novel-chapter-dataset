@@ -33,11 +33,9 @@ def get_soup(url, encoding=None, sleep=0):
     retries = Retry(total=4, backoff_factor=.3)
     s.mount('http://', HTTPAdapter(max_retries=retries))
     page = s.get(url)
-    if encoding:
-        page.encoding = encoding
     if sleep:
         time.sleep(sleep)
-    return BeautifulSoup(page.text, 'html5lib')
+    return BeautifulSoup(page.content, 'html5lib', from_encoding=encoding)
 
 
 def get_absolute_links(links, base_url):
