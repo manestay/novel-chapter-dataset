@@ -1,16 +1,20 @@
-This repository contains scripts to collect book chapter summaries, as well as their corresponding chapter texts.
-* summaries: novelguide, cliffsnotes, pinkmonkey\*, bookwolf, sparknotes, gradesaver
+This repository contains scripts to collect book chapter summaries, as well as their corresponding chapter texts. The dataset is intended for use by AI researchers who are building automatic summarization systems.
+
+* summaries: novelguide, cliffsnotes, pinkmonkey\*, bookwolf, gradesaver
 * full text: Project Gutenberg
 
 By running these scripts, the user assumes all legal liability for any copyright issues or claims.
 
 \*: note that the site pinkmonkey.com has two sources -- 'monkeynotes' and 'barrons'.
 
-See the file `scrape_all.sh` for instructions on how to run the scripts. Please create an issue on Github if you're stuck.
+See the file `scrape_all.sh` for instructions on how to run the scripts.
 
 This dataset was collected for the ACL 2020 paper https://arxiv.org/abs/2005.01840. If you use it, please cite accordingly:
 > Faisal Ladhak, Bryan Li, Yaser Al-Onaizan, and Kathleen McKeown. 2020. Exploring content selection in summarization of novel chapters.  In *Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics*,  pages 5043–5054, Online. Association for Computational Linguistics.
 
-See `FAQ.md` for common issues and crashes.
+See `FAQ.md` for common issues and crashes. Please create an issue on Github if you run into any other problems.
 
-These scripts were last ran by the authors on 7 Jan 2021, on archived version only.
+These scripts were last ran by the authors on 29 Mar 2021, on archived version only.
+
+# Alternatives
+A related book summarization dataset, maintained by a corporation with more resources (as opposed to us ~~overworked~~ highly-motivated PhD students) is https://github.com/salesforce/booksum. Noting our bias towards our own dataset being what everyone should use, we recommend that one too. We'll be announcing a joint effort between authors of their work and ours soon!
