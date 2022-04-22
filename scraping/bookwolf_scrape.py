@@ -125,12 +125,14 @@ def get_summaries(title_url_map, out_name, use_pickled=False, archived=False, up
     for title, url in title_url_map.items():  # iterate through books
         if title in done:
             continue
-        if sleep:
-            time.sleep(sleep)
+        # if sleep:
+        #     time.sleep(sleep)
         if archived:
             orig_url = url
             url = get_archived(url, update_old)
-        print('processing', title, url)
+        # print('processing', title, url)
+        print(f'{title}|||{url}')
+        continue
         author = ''  # TODO: figure this out
         soup = get_soup(url)
         contents = soup.find('table', id='Table56')

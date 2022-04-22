@@ -186,7 +186,9 @@ def get_summaries(books_list, base_url, out_name, use_pickled=False, archived=Fa
         if archived:
             url = get_orig_url(url)
             url = get_archived(url, update_old)
-        print('processing {} {}'.format(book, url))
+        # print('processing {} {}'.format(book, url))
+        print(f'{book}|||{url}')
+        continue
         soup = get_soup(url)
         author = get_author(soup)
         if not author:

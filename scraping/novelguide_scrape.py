@@ -861,14 +861,17 @@ def get_summaries(title_url_map, out_name, use_pickled=False, archived=False, up
         title = title.replace("DeerSlayer", 'Deerslayer', 1)
         if title in done:
             continue
-        if sleep:
-            time.sleep(sleep)
+        # if sleep:
+        #     time.sleep(sleep)
         author = ''  # TODO: figure this out
         archived_local = archived
         if archived:
             orig_url = url
             url = get_archived(url, update_old)
-        print('processing', title, url)
+        # print('processing', title, url)
+
+        print(f'{title}|||{url}')
+        continue
         soup = get_soup(url, sleep=SLEEP)
         table = soup.find('div', id='block-booknavigation-3') or soup.find('div', id='block-block-4')
 

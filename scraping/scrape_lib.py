@@ -32,6 +32,7 @@ def get_soup(url, encoding=None, sleep=0):
     s = requests.Session()
     retries = Retry(total=4, backoff_factor=.3)
     s.mount('http://', HTTPAdapter(max_retries=retries))
+    # page = s.get(url, verify=False)
     page = s.get(url)
     if encoding:
         page.encoding = encoding

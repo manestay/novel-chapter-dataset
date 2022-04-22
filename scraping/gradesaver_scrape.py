@@ -173,11 +173,14 @@ def get_summaries(books_list, base_url, out_name, pane_name, use_pickled=False, 
     for i, (book, url) in enumerate(title_url_map.items()):
         if book in done:
             continue
-        if sleep:
-            time.sleep(sleep)
+        # if sleep:
+        #     time.sleep(sleep)
         if archived:
             url = get_archived(url, update_old)
-        print('processing {} {}'.format(book, url))
+        # print('processing {} {}'.format(book, url))
+
+        print(f'{book}|||{url}')
+        continue
         soup = get_soup(url)
         author = get_author(soup)
         plot_overview = get_plot_summary(soup, pane_name, base_url, archived, update_old)

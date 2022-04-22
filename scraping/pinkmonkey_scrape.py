@@ -351,11 +351,13 @@ def get_summaries(page_title_map, out_name, use_pickled=False, archived=False, u
             source = 'monkeynotes'
         if (title, source) in done:
             continue
-        if sleep:
-            time.sleep(sleep)
+        # if sleep:
+        #     time.sleep(sleep)
         if archived:
             page = get_archived(page, update_old)
-        print('processing', title, page)
+        # print('processing', title, page)
+        print(f'{title}|||{page}')
+        continue
         author = ''  # TODO: figure this out
 
         soup_book = get_soup(page)
