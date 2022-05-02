@@ -603,7 +603,7 @@ if __name__ == "__main__":
     # else:
     books_list = BOOKS_LIST
     base_url = BASE_URL
-    book_summaries = get_summaries(books_list, base_url, args.out_name, args.use_pickled, PANE_NAME,
+    book_summaries = get_summaries(books_list, base_url, args.out_name, PANE_NAME, args.use_pickled,
                                    title_set, args.archived, args.update_old, args.save_every, args.sleep)
     # with open(args.out_name, 'rb') as f1:
     #     book_summaries = pickle.load(f1)
