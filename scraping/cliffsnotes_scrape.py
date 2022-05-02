@@ -15,7 +15,7 @@ import dill as pickle
 
 from archive_lib import get_archived, get_orig_url
 from scrape_lib import (BookSummary, gen_gutenberg_overlap, get_absolute_links,
-                        get_soup, load_catalog, roman_to_int,
+                        get_soup, load_catalog, roman_to_int, write_sect_links,
                         standardize_sect_title, standardize_title)
 from scrape_vars import CATALOG_NAME, NON_NOVEL_TITLES
 
@@ -47,6 +47,8 @@ def get_author(soup):
 
 
 def get_sections(soup, base_url, archived=False, update_old=False, pane_name=PANE_NAME):
+    if archived:
+        base_url = 'https://web.archive.org/'
     sections = []
     for link in soup.find(class_=pane_name).findAll('li'):
         if 'summary-and-analysis' in link.a['href']:
@@ -56,10 +58,9 @@ def get_sections(soup, base_url, archived=False, update_old=False, pane_name=PAN
     for section in sections[1:]:
         name = section.span.text
         url = urllib.parse.urljoin(base_url, section.a['href'])
-        if archived:
-            url = get_archived(get_orig_url(url), update_old)
+        # if archived:
+        #     url = get_archived(get_orig_url(url), update_old)
         section_urls.append((name, url))
-
     return section_urls
 
 
@@ -178,6 +179,7 @@ def get_summaries(books_list, base_url, out_name, use_pickled=False, archived=Fa
         url = urllib.parse.urljoin(BASE_URL, book.a['href'])
         title_url_map[title] = url
     print('found {} books'.format(len(title_url_map)))
+    links, sect_names, titles = [], [], []
     for i, (book, url) in enumerate(title_url_map.items()):
         if book in done:
             continue
@@ -188,7 +190,7 @@ def get_summaries(books_list, base_url, out_name, use_pickled=False, archived=Fa
             url = get_archived(url, update_old)
         # print('processing {} {}'.format(book, url))
         print(f'{book}|||{url}')
-        continue
+        # continue
         soup = get_soup(url)
         author = get_author(soup)
         if not author:
@@ -198,10 +200,17 @@ def get_summaries(books_list, base_url, out_name, use_pickled=False, archived=Fa
         plot_overview = ''
 
         section_summaries = []
+
         for (section_name, url) in get_sections(soup, base_url, archived, update_old):
-            orig_url = url
-            if archived:
-                url = get_archived(get_orig_url(url), update_old)
+            # orig_url = url
+            # if archived:
+            #     url = get_archived(get_orig_url(url), update_old)
+            titles.append(book)
+            links.append(url)
+            sect_names.append(section_name)
+            print(book, url, section_name)
+            continue
+
             summary = get_section_summary(url, base_url, archived, update_old)
             section_summaries.append((section_name, summary))
         bs = BookSummary(title=book,
@@ -217,6 +226,7 @@ def get_summaries(books_list, base_url, out_name, use_pickled=False, archived=Fa
             with open(out_name, 'wb') as f:
                 pickle.dump(book_summaries, f)
             print("Done scraping {} books".format(num_books))
+    write_sect_links('urls/chapter-level/cliffsnotes.tsv', titles, links, sect_names)
 
     print('Scraped {} books from cliffsnotes'.format(len(book_summaries)))
     with open(out_name, 'wb') as f:

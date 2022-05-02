@@ -19,7 +19,7 @@ from bs4 import element
 
 from archive_lib import get_archived, get_orig_url
 from scrape_lib import get_soup, get_clean_text, get_absolute_links, find_all_stripped, load_catalog, BookSummary, \
-                       gen_gutenberg_overlap, standardize_title, standardize_sect_title, fix_multibook, fix_multipart
+                       gen_gutenberg_overlap, standardize_title, standardize_sect_title, fix_multibook, fix_multipart, write_sect_links
 from scrape_vars import CATALOG_NAME, NON_NOVEL_TITLES
 
 tups = [
@@ -250,10 +250,11 @@ def process_next_link(link, archived, update_old):
         if chapters[9]['href'] != 'pmJungle31.asp':
             chapters[9]['href'] = 'pmJungle31.asp'
     if not chapters:
-        return None
+        return [],[]
     section_summs = []
     url_title_map = {}
     seen_urls = set()
+    links, sect_names = [], []
     for c in chapters:
         href = c.get('href')
         title = get_clean_text(c)
@@ -280,35 +281,38 @@ def process_next_link(link, archived, update_old):
                 continue
         if orig_url in seen_urls:
             continue
-        if archived:
-            orig_url = urllib.parse.urljoin(get_orig_url(link), c.get('href'))
-            url = get_archived(orig_url, update_old)
+        # if archived:
+        #     orig_url = urllib.parse.urljoin(get_orig_url(link), c.get('href'))
+        #     url = get_archived(orig_url, update_old)
+
         url_title_map[url] = title
         seen_urls.add(orig_url)
+        links.append(url)
+        sect_names.append(title)
 
-    for url, title in url_title_map.items():
-        summs = process_story(url, title)
-        for summ in summs:
-            # print(' ', summ[0])
-            if summ[1]:  # not empty text
-                section_summs.append(summ)
+    # for url, title in url_title_map.items():
+    #     summs = process_story(url, title)
+    #     for summ in summs:
+    #         # print(' ', summ[0])
+    #         if summ[1]:  # not empty text
+    #             section_summs.append(summ)
 
     # manual fixes
-    extra_sections = []
-    if 'pmWinesburg' in link:
-        extra_sections = ["pmWinesburg20.asp", "pmWinesburg21.asp", "pmWinesburg22.asp"]
-    elif 'pmDubliners' in link:
-        extra_sections = ["pmDubliners12.asp", "pmDubliners16.asp"]  # pmDubliners57.asp has no "Summary" heading, so skip
-    if extra_sections:
-        if archived:
-            links_addtl = [get_archived(urllib.parse.urljoin(get_orig_url(link), href), update_old)
-                           for href in extra_sections]
-        else:
-            links_addtl = [urllib.parse.urljoin(link, x) for x in extra_sections]
-        sect_summs_addtl = [process_story(x)  for x in links_addtl]
-        sect_summs_addtl = [x[0] for x in sect_summs_addtl]
-        section_summs.extend(sect_summs_addtl)
-    return section_summs
+    # extra_sections = []
+    # if 'pmWinesburg' in link:
+    #     extra_sections = ["pmWinesburg20.asp", "pmWinesburg21.asp", "pmWinesburg22.asp"]
+    # elif 'pmDubliners' in link:
+    #     extra_sections = ["pmDubliners12.asp", "pmDubliners16.asp"]  # pmDubliners57.asp has no "Summary" heading, so skip
+    # if extra_sections:
+        # if archived:
+        #     links_addtl = [get_archived(urllib.parse.urljoin(get_orig_url(link), href), update_old)
+        #                    for href in extra_sections]
+        # else:
+        # links_addtl = [urllib.parse.urljoin(link, x) for x in extra_sections]
+        # sect_summs_addtl = [process_story(x)  for x in links_addtl]
+        # sect_summs_addtl = [x[0] for x in sect_summs_addtl]
+        # section_summs.extend(sect_summs_addtl)
+    return links, sect_names
 
 
 def process_story_link(link, archived, update_old):
@@ -343,7 +347,7 @@ def get_summaries(page_title_map, out_name, use_pickled=False, archived=False, u
     else:
         book_summaries = []
         done = set()
-
+    links_all, sect_names_all, titles_all = [], [], []
     for page, title in page_title_map.items():
         if 'barrons' in page.lower():
             source = 'barrons'
@@ -351,13 +355,12 @@ def get_summaries(page_title_map, out_name, use_pickled=False, archived=False, u
             source = 'monkeynotes'
         if (title, source) in done:
             continue
-        # if sleep:
-        #     time.sleep(sleep)
+        if sleep:
+            time.sleep(sleep)
         if archived:
             page = get_archived(page, update_old)
         # print('processing', title, page)
         print(f'{title}|||{page}')
-        continue
         author = ''  # TODO: figure this out
 
         soup_book = get_soup(page)
@@ -377,30 +380,35 @@ def get_summaries(page_title_map, out_name, use_pickled=False, archived=False, u
             href = next_link.get('href')
             url = urllib.parse.urljoin(get_orig_url(page), href)
             url = get_archived(url, update_old)
-            sect_summs = process_next_link(url, archived, update_old)
+            links, sect_names = process_next_link(url, archived, update_old)
         elif story_link:  # barrons (most)
-            url = page
-            sect_summs = process_story_link(url, archived, update_old)
+            # url = page
+            # links, sect_names, titles = process_story_link(url, archived, update_old)
+            links, sect_names = [], []
         elif is_hard_times:
             url = page
-            sect_summs = process_next_link(url, archived, update_old)
+            links, sect_names = process_next_link(url, archived, update_old)
         else:
             print('error')
             sys.exit()
+        titles = [title] * len(links)
+        links_all.extend(links), sect_names_all.extend(sect_names), titles_all.extend(titles)
 
-        if not sect_summs:
-            print('    Cannot process {}'.format(url))
-            # NOTE: expected to reach here for barrons Oliver Twist and barrons The Secret Sharer
-            continue
+        # if not sect_summs:
+        #     print('    Cannot process {}'.format(url))
+        #     # NOTE: expected to reach here for barrons Oliver Twist and barrons The Secret Sharer
+        #     continue
 
-        book_summ = BookSummary(title=title, author=author, genre=None, plot_overview=None, source=source,
-                                section_summaries=sect_summs)
-        book_summaries.append(book_summ)
-        num_books = len(book_summaries)
-        if num_books > 1 and num_books % save_every == 0:
-            with open(out_name, 'wb') as f:
-                pickle.dump(book_summaries, f)
-            print("Done scraping {} books".format(num_books))
+        # book_summ = BookSummary(title=title, author=author, genre=None, plot_overview=None, source=source,
+        #                         section_summaries=sect_summs)
+        # book_summaries.append(book_summ)
+        # num_books = len(book_summaries)
+        # if num_books > 1 and num_books % save_every == 0:
+        #     with open(out_name, 'wb') as f:
+        #         pickle.dump(book_summaries, f)
+        #     print("Done scraping {} books".format(num_books))
+
+    write_sect_links('urls/chapter-level/pinkmonkey.tsv', titles_all, links_all, sect_names_all)
 
     print('Scraped {} books from pinkmonkey'.format(len(book_summaries)))
     with open(out_name, 'wb') as f:

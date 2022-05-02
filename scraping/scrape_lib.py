@@ -242,3 +242,8 @@ def fix_multipart(sect, book_count):
         book_count += 1
     sect = 'Part {}: {}'.format(book_count, sect)
     return sect, book_count
+
+def write_sect_links(outname, titles, links, sect_names):
+    with open(outname, 'w') as f:
+        for title, link, sect in zip(titles, links, sect_names):
+            f.write(f'{title}\t{sect.strip()}\t{link.strip()}\n')

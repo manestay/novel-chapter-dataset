@@ -16,7 +16,7 @@ import dill as pickle
 
 from archive_lib import get_archived, get_orig_url
 from scrape_lib import BookSummary, get_soup, load_catalog, gen_gutenberg_overlap, standardize_title, clean_title, \
-                       clean_sect_summ, standardize_sect_title, fix_multibook, fix_multipart
+                       clean_sect_summ, standardize_sect_title, fix_multibook, fix_multipart, write_sect_links
 from scrape_vars import NON_NOVEL_TITLES, RE_SUMM, CATALOG_NAME
 
 PANE_NAME = 'navSection__list js--collapsible'
@@ -112,20 +112,21 @@ def get_section_summary(url):
 
 
 def get_sections(soup, pane_name, base_url, archived=False, update_old=False):
+    if archived:
+        base_url = 'https://web.archive.org/'
     summaries = None
     for link in soup.find(class_=pane_name).findAll('li'):
         if 'summary and analysis' in link.text.lower().strip():
             summaries = link
             break
-
     sections = []
     try:
         for link in summaries.findAll('li'):
             name = link.text.strip()
             url = urllib.parse.urljoin(base_url, link.a['href'])
-            if archived:
-                orig_url = get_orig_url(link.a['href'])
-                url = get_archived(orig_url, update_old)
+            # if archived:
+            #     orig_url = get_orig_url(link.a['href'])
+            #     url = get_archived(orig_url, update_old)
 
             sections.append((name, url))
     except AttributeError:
@@ -170,6 +171,8 @@ def get_summaries(books_list, base_url, out_name, pane_name, use_pickled=False, 
             title_url_map[title] = url
 
     print('found {} books'.format(len(title_url_map)))
+    links, sect_names, titles = [], [], []
+
     for i, (book, url) in enumerate(title_url_map.items()):
         if book in done:
             continue
@@ -180,7 +183,6 @@ def get_summaries(books_list, base_url, out_name, pane_name, use_pickled=False, 
         # print('processing {} {}'.format(book, url))
 
         print(f'{book}|||{url}')
-        continue
         soup = get_soup(url)
         author = get_author(soup)
         plot_overview = get_plot_summary(soup, pane_name, base_url, archived, update_old)
@@ -188,6 +190,11 @@ def get_summaries(books_list, base_url, out_name, pane_name, use_pickled=False, 
         section_summaries = []
         sections = get_sections(soup, pane_name, base_url, archived, update_old)
         for (section_name, url) in sections:
+            titles.append(book)
+            links.append(url)
+            sect_names.append(section_name)
+            print(book, url, section_name)
+            continue
             summary = get_section_summary(url)
             section_summaries.append((section_name, summary))
         bs = BookSummary(title=book,
@@ -203,6 +210,7 @@ def get_summaries(books_list, base_url, out_name, pane_name, use_pickled=False, 
             print("Done scraping {} books".format(num_books))
             with open(out_name, 'wb') as f:
                 pickle.dump(book_summaries, f)
+    write_sect_links('urls/chapter-level/gradesaver.tsv', titles, links, sect_names)
 
     print('Scraped {} books from gradesaver'.format(len(book_summaries)))
     with open(out_name, 'wb') as f:
@@ -606,7 +614,7 @@ if __name__ == "__main__":
     # else:
     books_list = BOOKS_LIST
     base_url = BASE_URL
-    book_summaries = get_summaries(books_list, base_url, args.out_name, args.use_pickled, PANE_NAME,
+    book_summaries = get_summaries(books_list, base_url, args.out_name, PANE_NAME, args.use_pickled,
                                    title_set, args.archived, args.update_old, args.save_every, args.sleep)
     # with open(args.out_name, 'rb') as f1:
     #     book_summaries = pickle.load(f1)

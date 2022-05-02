@@ -22,7 +22,7 @@ from bs4.element import NavigableString, Tag
 from archive_lib import get_archived, get_orig_url
 from number_lib import roman_to_int
 from scrape_lib import BookSummary, get_soup, gen_gutenberg_overlap, clean_title, clean_sect_summ, get_clean_text, \
-                       standardize_title, standardize_sect_title, load_catalog, fix_multipart, fix_multibook
+                       standardize_title, standardize_sect_title, load_catalog, fix_multipart, fix_multibook, write_sect_links
 from scrape_vars import CATALOG_NAME, NON_NOVEL_TITLES, RE_SUMM_START, chapter_re, RE_CHAPTER_START, \
                         RE_CHAPTER_NOSPACE, RE_PART_NOSPACE
 
@@ -857,6 +857,7 @@ def get_summaries(title_url_map, out_name, use_pickled=False, archived=False, up
         book_summaries = []
         done = set()
 
+    links, sect_names, titles = [], [], []
     for title, url in title_url_map.items():
         title = title.replace("DeerSlayer", 'Deerslayer', 1)
         if title in done:
@@ -871,29 +872,28 @@ def get_summaries(title_url_map, out_name, use_pickled=False, archived=False, up
         # print('processing', title, url)
 
         print(f'{title}|||{url}')
-        continue
         soup = get_soup(url, sleep=SLEEP)
         table = soup.find('div', id='block-booknavigation-3') or soup.find('div', id='block-block-4')
 
         # process plot summary
         plot_summ = None
         plot_cell = table.find('a', href=RE_PLOT_LINK)
-        if plot_cell:
-            plot_title = plot_cell.get_text()
-            href = plot_cell['href']
-            if archived:
-                plot_link = get_orig_url(href)
-                plot_link = get_archived(plot_link, update_old)
-                if 'archive.org' not in plot_link: # failed to retrieve archived version
-                    # archived versions of 'the-mayor-of-casterbridge' seem to be corrupted
-                    time.sleep(5.0)
-                    archived_local = False
-            else:
-                plot_link = urllib.parse.urljoin(url, href)
-            if 'Chapter' not in plot_title:
-                plot_summ = process_plot(plot_link)
-            if not plot_summ:
-                print('  no plot summary found', plot_link)
+        # if plot_cell:
+        #     plot_title = plot_cell.get_text()
+        #     href = plot_cell['href']
+        #     if archived:
+        #         plot_link = get_orig_url(href)
+        #         plot_link = get_archived(plot_link, update_old)
+        #         if 'archive.org' not in plot_link: # failed to retrieve archived version
+        #             # archived versions of 'the-mayor-of-casterbridge' seem to be corrupted
+        #             time.sleep(5.0)
+        #             archived_local = False
+        #     else:
+        #         plot_link = urllib.parse.urljoin(url, href)
+        #     if 'Chapter' not in plot_title:
+        #         plot_summ = process_plot(plot_link)
+        #     if not plot_summ:
+        #         print('  no plot summary found', plot_link)
 
         # process section summaries
         cells = table.find_all('a', href=RE_SUMM_LINK)
@@ -914,35 +914,41 @@ def get_summaries(title_url_map, out_name, use_pickled=False, archived=False, up
                 continue
             if re.match(RE_PLOT, section_title):
                 continue
+            # import pdb; pdb.set_trace()
+            # if archived and archived_local:
+            #     link_summ = get_orig_url(c['href'])
+            #     link_summ = get_archived(link_summ, update_old)
+            # else:
+            link_summ = urllib.parse.urljoin(url, c['href'])
 
-            if archived and archived_local:
-                link_summ = get_orig_url(c['href'])
-                link_summ = get_archived(link_summ, update_old)
-            else:
-                link_summ = urllib.parse.urljoin(url, c['href'])
+            titles.append(title)
+            sect_names.append(section_title_chap)
+            links.append(link_summ)
+            print(title, section_title_chap, link_summ)
 
-            try:
-                page_summs = process_story(link_summ)
-            except AttributeError:  # page failed to load, try again
-                print('  retrying after 5 seconds...')
-                time.sleep(5.0)
-                page_summs = process_story(link_summ)
+            # try:
+            #     page_summs = process_story(link_summ)
+            # except AttributeError:  # page failed to load, try again
+            #     print('  retrying after 5 seconds...')
+            #     time.sleep(5.0)
+            #     page_summs = process_story(link_summ)
 
-            if page_summs:
-                section_summs.extend(page_summs)
-                seen_sects.add(section_title_chap)
-        if not section_summs:
-            print('  could not find summaries for {}'.format(title))
-            continue
-        book_summ = BookSummary(title=title, author=author, genre=None, plot_overview=plot_summ,
-                                source='novelguide', section_summaries=section_summs)
-        book_summaries.append(book_summ)
-        num_books = len(book_summaries)
-        if num_books > 1 and num_books % save_every == 0:
-            with open(out_name, 'wb') as f:
-                pickle.dump(book_summaries, f)
-            print("Done scraping {} books".format(num_books))
+        #     if page_summs:
+        #         section_summs.extend(page_summs)
+        #         seen_sects.add(section_title_chap)
+        # if not section_summs:
+        #     print('  could not find summaries for {}'.format(title))
+        #     continue
+        # book_summ = BookSummary(title=title, author=author, genre=None, plot_overview=plot_summ,
+        #                         source='novelguide', section_summaries=section_summs)
 
+        # book_summaries.append(book_summ)
+        # num_books = len(book_summaries)
+        # if num_books > 1 and num_books % save_every == 0:
+        #     with open(out_name, 'wb') as f:
+        #         pickle.dump(book_summaries, f)
+        #     print("Done scraping {} books".format(num_books))
+    write_sect_links('urls/chapter-level/novelguide.tsv', titles, links, sect_names)
     print('Scraped {} books from novelguide'.format(len(book_summaries)))
     with open(out_name, 'wb') as f:
         pickle.dump(book_summaries, f)

@@ -18,7 +18,7 @@ import dill as pickle
 
 from archive_lib import get_archived, get_orig_url
 from scrape_lib import get_soup, get_clean_text, load_catalog, find_all_stripped, gen_gutenberg_overlap, \
-                       standardize_title, load_catalog, BookSummary, CATALOG_NAME, RE_CHAPTER_NOSPACE
+                       standardize_title, load_catalog, BookSummary, CATALOG_NAME, RE_CHAPTER_NOSPACE, write_sect_links
 
 
 BOOKS_LIST = 'http://www.bookwolf.com/Welcome_to_Bookwolf1/welcome_to_bookwolf1.html'
@@ -108,6 +108,7 @@ def standardize_section_titles(text):
     text = text.replace(' - Summary', '').replace('6 -7', '6-7')
     if 'Book' and 'Chapter' in text:
         text = text.replace(' C', ': C')
+    text = text.replace('Chap ', 'Chapter ')
     return text
 
 
@@ -122,6 +123,7 @@ def get_summaries(title_url_map, out_name, use_pickled=False, archived=False, up
         book_summaries = []
         done = set()
 
+    links, sect_names, titles = [], [], []
     for title, url in title_url_map.items():  # iterate through books
         if title in done:
             continue
@@ -130,9 +132,8 @@ def get_summaries(title_url_map, out_name, use_pickled=False, archived=False, up
         if archived:
             orig_url = url
             url = get_archived(url, update_old)
-        # print('processing', title, url)
-        print(f'{title}|||{url}')
-        continue
+        print(title, url)
+
         author = ''  # TODO: figure this out
         soup = get_soup(url)
         contents = soup.find('table', id='Table56')
@@ -157,18 +158,23 @@ def get_summaries(title_url_map, out_name, use_pickled=False, archived=False, up
             if 'Interpretation' in text:
                 continue
             href = c['href']
-            link_summ = urllib.parse.urljoin(url, href)
-            if archived:
-                if '/' not in href:
-                    orig_url = urllib.parse.urljoin(get_orig_url(url), href)
-                else:
-                    orig_url = get_orig_url(href)
-                link_summ = get_archived(orig_url, update_old)
+            link_summ = urllib.parse.urljoin('https://web.archive.org/', href)
+            # if archived:
+            #     if '/' not in href:
+            #         orig_url = urllib.parse.urljoin(get_orig_url(url), href)
+            #     else:
+            #         orig_url = get_orig_url(href)
+            #     link_summ = get_archived(orig_url, update_old)
+            text = standardize_section_titles(text)
+            titles.append(title)
+            links.append(link_summ)
+            sect_names.append(text)
+            continue
+
             paras = process_chapter(link_summ)
             if not paras:
                 print('no summaries found on ', link_summ)
                 continue
-            text = standardize_section_titles(text)
             sects.append((text, paras))
         book_summ = BookSummary(
             title=title,
@@ -177,12 +183,15 @@ def get_summaries(title_url_map, out_name, use_pickled=False, archived=False, up
             plot_overview=None,
             source='bookwolf',
             section_summaries=sects)
+        continue
         book_summaries.append(book_summ)
         num_books = len(book_summaries)
         if num_books > 1 and num_books % save_every == 0:
             with open(out_name, 'wb') as f:
                 pickle.dump(book_summaries, f)
             print("Done scraping {} books".format(num_books))
+
+    write_sect_links('urls/chapter-level/bookwolf.tsv', titles, links, sect_names)
 
     print('Scraped {} books from bookwolf'.format(len(book_summaries)))
     with open(out_name, 'wb') as f:
