@@ -22,12 +22,13 @@ from bs4.element import NavigableString, Tag
 from archive_lib import get_archived, get_orig_url
 from number_lib import roman_to_int
 from scrape_lib import BookSummary, get_soup, gen_gutenberg_overlap, clean_title, clean_sect_summ, get_clean_text, \
-                       standardize_title, standardize_sect_title, load_catalog, fix_multipart, fix_multibook
+                       standardize_title, standardize_sect_title, load_catalog, write_sect_links, \
+                       fix_multipart, fix_multibook
 from scrape_vars import CATALOG_NAME, NON_NOVEL_TITLES, RE_SUMM_START, chapter_re, RE_CHAPTER_START, \
                         RE_CHAPTER_NOSPACE, RE_PART_NOSPACE
 
 
-BOOKS_LIST = 'https://www.novelguide.com/novelguides?items_per_page=All'
+BOOKS_LIST = 'https://novelguide.com/novelguides?items_per_page=All'
 OUT_NAME_ALL = 'pks/summaries_novelguide_all.pk'
 OUT_NAME_OVERLAP = 'pks/summaries_novelguide.pk'
 SLEEP = 0.5  # sleep, since pages fail to load if scraped too fast
@@ -60,13 +61,14 @@ parser.add_argument('out_name', nargs='?', default=OUT_NAME_ALL, help='name of p
 parser.add_argument('out_name_overlap', nargs='?', default=OUT_NAME_OVERLAP,
                     help='name of pickle file for overlapping summaries')
 parser.add_argument('--archived', action='store_true', help='always use archived versions of scripts')
-parser.add_argument('--archived-list', action='store_true', help='use archived books list page')
+# parser.add_argument('--archived-list', action='store_true', help='use archived books list page')
 parser.add_argument('--use-pickled', action='store_true', help='use existing (partial) pickle')
 parser.add_argument('--full', action='store_true', help='get all books, not just those in Gutenberg')
 parser.add_argument('--catalog', default=CATALOG_NAME, help='get all books, not just those in Gutenberg')
 parser.add_argument('--update-old', action='store_true', help='update out-of-date archived version')
 parser.add_argument('--save-every', default=2, type=int, help='interval to save pickled file')
 parser.add_argument('--sleep', default=0, type=int, help='sleep time between scraping each book')
+parser.add_argument('--no-text', dest='get_text', action='store_false', help='do not get book text')
 
 
 def get_title_url_map(books_list, title_set=None):
@@ -332,32 +334,13 @@ def process_story(link, title=None):
                     if write:
                         sect_summ.append(text)
     if not break_found and sect_summ:
-        chapters.append((title, sect_summ))
+        chapters.append((title, sect_summ, link))
 
     for i, chapter in enumerate(chapters):
         norm = [unicodedata.normalize("NFKD", p).strip() for p in chapter[1]]
         norm = [x for x in norm if x]
-        chapters[i] = (chapters[i][0], norm)
+        chapters[i] = (chapters[i][0], norm, chapters[i][2])
     return chapters
-
-def expand_summs(pattern, section_summaries):
-    sect_summs_new = {}
-    for j, (sect_title, sect_summ) in enumerate(section_summaries):
-        for p in sect_summ:
-            if p == 'Tweet':
-                continue
-            spans = [(m.start(0), m.end(0)) for m in re.finditer(pattern, p)]
-            if not spans:
-                sect_summs_new[sect_title] = sect_summ
-                break
-            else:
-                for i in range(len(spans)):
-                    start, end = spans[i]
-                    sect_title_new = p[start: end][:-1]
-                    next_start = spans[i+1][0] if i + 1 < len(spans) else len(p)
-                    text = p[end: next_start]
-                    sect_summs_new[sect_title_new] = [text]
-    return [(k, v) for k, v in sect_summs_new.items()]
 
 
 def get_chapter_num(x): return int(x.split(',', 1)[1].strip()[8:])
@@ -375,7 +358,7 @@ def manual_fix(book_summaries):
         section_summaries_new = []
         section_summaries_old = book_summ.section_summaries
         for i, curr_summ in enumerate(section_summaries_old):
-            chap_title, sect_summ = curr_summ
+            chap_title, sect_summ, link = curr_summ
             chap_title = clean_title(chap_title, preserve_summary=True)
             sect_summ = clean_sect_summ(sect_summ)
             if re.match(r'{}:'.format(chapter_re), chap_title):
@@ -387,50 +370,50 @@ def manual_fix(book_summaries):
             if re.match(DASH_START_RE, chap_title):
                 chap_title = re.sub(DASH_START_RE, '', chap_title, 1)
             if chap_title:
-                section_summaries_new.append((chap_title.strip(), sect_summ))
+                section_summaries_new.append((chap_title.strip(), sect_summ, link))
         book_summ_new = book_summ._replace(section_summaries=section_summaries_new)
         book_summaries_new.append(book_summ_new)
     return book_summaries_new
 
 
-def manual_fix_individual(book_summaries):
+def manual_fix_individual(book_summaries, get_text=True):
     """
     Note we do not manually fix the plays, since we do not use them in the literature dataset.
     """
     def remove_duplicates(sect_summs_old):
         seen = set()
         sect_summs = []
-        for sect_title, sect_summ in sect_summs_old:
+        for sect_title, sect_summ, link in sect_summs_old:
             if sect_title in seen:
                 continue
-            sect_summs.append((sect_title, sect_summ))
+            sect_summs.append((sect_title, sect_summ, link))
             seen.add(sect_title)
         return sect_summs
 
     def add_dash_numwords(sect_summs_old):
         sect_summs_new = []
         tens = ['Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty']
-        for sect_title, sect_summ in sect_summs_old:
+        for sect_title, sect_summ, link in sect_summs_old:
             sect_title = sect_title.replace('Sixty Two', 'Sixty Two and Sixty Three')
             for t in tens:
                 sect_title = sect_title.replace(t + ' ', t + '-')
-            sect_title = sect_title.replace(',', '')
+            sect_title = sect_title.replace(',', ' ')
             words = sect_title.split()
             if len(words) > 2:
                 sect_title = '{} {} - {}'.format(words[0], words[1], words[-1])
             else:
                 sect_title = '{} {}'.format(words[0], words[1])
 
-            sect_summs_new.append((sect_title, sect_summ))
+            sect_summs_new.append((sect_title, sect_summ, link))
         return sect_summs_new
 
-    def greenwood_fix(sect_summs_old):
+    def greenwood_fix(sect_summs_old, get_text=True):
         sect_summs_new = []
         sect_summs_old = remove_duplicates(sect_summs_old)
-        for sect_title, sect_summ in sect_summs_old:
+        for sect_title, sect_summ, link in sect_summs_old:
             if sect_title.startswith('C'):
                 sect_title = get_first_last_chapter(sect_title)
-                sect_summs_new.append((sect_title, sect_summ))
+                sect_summs_new.append((sect_title, sect_summ, link))
             else:  # Part Two
                 ss, st = [], ''
                 curr_summ = []
@@ -451,31 +434,31 @@ def manual_fix_individual(book_summaries):
     def ambass_fix(sect_summs_old):
         sect_summs_old = remove_duplicates(sect_summs_old)
         numbers = [1, 2, 3, 1, 2, 1, 2, 1, 2, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 4]
-        sect_summs_new  = [('Chapter {}'.format(num), summ) for num, (_, summ) in zip(numbers, sect_summs_old)]
+        sect_summs_new  = [('Chapter {}'.format(num), summ, link) for num, (_, summ, link) in zip(numbers, sect_summs_old)]
         return sect_summs_new
 
     def mirth_fix(sect_summs_old):
         sect_summs_new = []
-        for sect_title, sect_summ in sect_summs_old:
+        for sect_title, sect_summ, link in sect_summs_old:
             sect_title = sect_title.split(' – ', 1)[-1]
             sect_title = sect_title.replace('6,7,8', '6-8').replace(',', '-')
             sect_title = sect_title.replace('and', '-')
-            sect_summs_new.append((sect_title, sect_summ))
+            sect_summs_new.append((sect_title, sect_summ, link))
         return sect_summs_new
 
     def bovary_fix(sect_summs_old):
         sect_summs_old = deepcopy(sect_summs_old)
         sect_summs_new = sect_summs_old[0:-5]
         chap_8 = []
-        for chap_title, chap_summ in sect_summs_old[-5:]:
+        for chap_title, chap_summ, link in sect_summs_old[-5:]:
             if chap_title.endswith('8'):
                 chap_8.extend(chap_summ)
             elif chap_title.endswith('9'):
                 chap_8.extend(chap_summ)
-                sect_summs_new.append(('Chapter 8', chap_8))
+                sect_summs_new.append(('Chapter 8', chap_8, link))
             else:
                 orig = int(chap_title.rsplit(' ', 1)[-1])
-                sect_summs_new.append(('Chapter {}'.format(orig-1), chap_summ))
+                sect_summs_new.append(('Chapter {}'.format(orig-1), chap_summ, link))
         return sect_summs_new
 
     start = False  # True to debug
@@ -486,6 +469,11 @@ def manual_fix_individual(book_summaries):
         title = book_summ.title
         # if idx == 0:
         #     start = True
+
+        if not get_text:
+            if sect_summs_old[0][0].lower() == 'summary':
+                sect_summs_old = sect_summs_old[1:]
+
         if title in NON_NOVEL_TITLES:
             continue
         elif title == 'Don Quixote':  # not the same chapter numbering as Gutenberg
@@ -497,53 +485,76 @@ def manual_fix_individual(book_summaries):
             elif title == 'The Ambassadors':
                 sect_summs_old = ambass_fix(sect_summs_old)
             elif title == 'War of the Worlds':
-                sect_summs_old = [('Chapter {}'.format(x[0].split('.', 1)[0]), x[1]) for x in sect_summs_old if '.' in x[0]]
+                if get_text:
+                    sect_summs_old = [('Chapter {}'.format(x[0].split('.', 1)[0]), *x[1:]) for x in sect_summs_old if '.' in x[0]]
+                else:
+                    sect_summs_old = [(f"Chapter {x[0].split(' - ', 1)[-1]}", *x[1:]) for x in sect_summs_old]
+                    sect_summs_old = add_dash_numwords(sect_summs_old)
             elif title == 'My Antonia':
-                assert sect_summs_old[3][0] == 'Part IV'
-                assert sect_summs_old[4][0] == 'Part I'
-                sect_summs_old = sect_summs_old[4:]
-            for i, (chap_title, sect_summ) in enumerate(sect_summs_old):
-                chap_title = chap_title.replace("Part", 'Chapter')
-                if not chap_title.startswith("Chapter"):
-                    continue
-                chap_title, book_count = fix_multibook(chap_title, book_count)
-                sect_summs_new.append((chap_title, sect_summ))
+                if get_text:
+                    assert sect_summs_old[3][0] == 'Part IV'
+                    assert sect_summs_old[4][0] == 'Part I'
+                    sect_summs_old = sect_summs_old[4:]
+                else:
+                    sect_summs_old = [(f"{x[0].split(', ', 1)[-1]}", *x[1:]) for x in sect_summs_old]
+            elif title == 'Hard Times' and not get_text:
+                sect_summs_new = [(re.sub('(\d)', ' \g<1>: ', x[0], 1), *x[1:]) for x in sect_summs_old]
+            if sect_summs_new == []:
+                for i, (chap_title, sect_summ, link) in enumerate(sect_summs_old):
+                    chap_title = chap_title.replace("Part", 'Chapter')
+                    if not chap_title.startswith("Chapter"):
+                        continue
+                    chap_title, book_count = fix_multibook(chap_title, book_count)
+                    sect_summs_new.append((chap_title, sect_summ, link))
         elif title in set(["Madame Bovary", "Gulliver's Travels", "Under the Greenwood Tree"]):  # multipart
             book_count = 0
             if title == "Under the Greenwood Tree":
-                sect_summs_old = greenwood_fix(sect_summs_old)
+                if not get_text:
+                    sect_summs_new = [(x[0].replace(' Ch', ': Ch', 1), *x[1:]) for x in sect_summs_old]
+                else:
+                    sect_summs_old = greenwood_fix(sect_summs_old)
             elif title == 'Madame Bovary':
-                sect_summs_old = bovary_fix(sect_summs_old)
-            for i, (chap_title, sect_summ) in enumerate(sect_summs_old):
-                if not chap_title.startswith("Chapter"):
-                    continue
-                chap_title, book_count = fix_multipart(chap_title, book_count)
-                sect_summs_new.append((chap_title, sect_summ))
-        elif title in set(['Crime and Punishment']):
-            sect_summs_new = [(chap.replace(',', ':', 1), summ) for chap, summ in sect_summs_old]
+                if not get_text:
+                    sect_summs_old = [(x[0].split(' - ', 1)[-1], *x[1:]) for x in sect_summs_old]
+                else:
+                    sect_summs_old = bovary_fix(sect_summs_old)
+            elif title == "Gulliver's Travels" and not get_text:
+                sect_summs_new = [(x[0].replace(' Ch', ': Ch', 1), *x[1:]) for x in sect_summs_old]
+            if sect_summs_new == []:
+                for i, (chap_title, sect_summ, link) in enumerate(sect_summs_old):
+                    if not chap_title.startswith("Chapter"):
+                        continue
+                    chap_title, book_count = fix_multipart(chap_title, book_count)
+                    sect_summs_new.append((chap_title, sect_summ, link))
+
+        elif title in set(['Crime and Punishment']) and get_text:
+            sect_summs_new = [(chap.replace(',', ':', 1), summ, link) for chap, summ, link in sect_summs_old]
         elif title in set(['Treasure Island', 'Kidnapped']):
             sect_summs_old = remove_duplicates(sect_summs_old)
-            sect_summs_new = [x for x in sect_summs_old if x[0].startswith('Chapter')]
+            if get_text:
+                sect_summs_new = [x for x in sect_summs_old if x[0].startswith('Chapter')]
+            else:
+                sect_summs_new = sect_summs_old
         elif title in set(['Main Street', 'The Scarlet Letter', 'The Beast in the Jungle', "The Age of Innocence",
                            "The Call of the Wild", 'Ivanhoe']):
             sect_summs_new = remove_duplicates(sect_summs_old)
         elif title == 'Great Expectations':
-            sect_summs_new = [('Chapter {}'.format(i), summ) for i, (_, summ) in enumerate(sect_summs_old, 1)]
+            sect_summs_new = [('Chapter {}'.format(i), summ, link) for i, (_, summ, link) in enumerate(sect_summs_old, 1)]
         elif title == 'Babbitt':
             sect_summs_old = remove_duplicates(sect_summs_old)
-            for sect_title, sect_summ in sect_summs_old:
+            for sect_title, sect_summ, link in sect_summs_old:
                 sect_title = sect_title.replace(',', '')
                 nums = re.findall('\d+', sect_title)
                 sect_title = 'Chapter {}-{}'.format(nums[0], nums[-1])
-                sect_summs_new.append((sect_title, sect_summ))
-        elif title == 'Adam Bede':
-            for sect_title, sect_summ in sect_summs_old:
-                if sect_summ[0].startswith('George Eliot, Adam Bede. Edited'):
+                sect_summs_new.append((sect_title, sect_summ, link))
+        elif title == 'Adam Bede' and get_text:
+            for sect_title, sect_summ, link in sect_summs_old:
+                if sect_summ and sect_summ[0].startswith('George Eliot, Adam Bede. Edited'):
                     continue
-                sect_summs_new.append((sect_title, sect_summ))
+                sect_summs_new.append((sect_title, sect_summ, link))
             assert sect_summs_new[0][0] == sect_summs_new[1][0] == 'Chapter 1'
             sect_summs_new = sect_summs_new[1:]
-        elif title == 'Dracula':
+        elif title == 'Dracula' and get_text:
             assert sect_summs_old[0][0] == 'Summary'
             sect_summs_new = sect_summs_old[1:]
         elif title == 'Lord Jim':
@@ -551,17 +562,17 @@ def manual_fix_individual(book_summaries):
                         '22 - 23', '24 - 26', '27 - 29', '30 - 32', '33 - 35', '36 - 37', '38 - 40',
                         '41 - 43', '44 - 45']
             chapters = ['Chapter {}'.format(x) for x in chapters]
-            sect_summs_new = [(chap, summ[1]) for chap, summ in zip(chapters, sect_summs_old)]
+            sect_summs_new = [(chap, *summ[1:]) for chap, summ in zip(chapters, sect_summs_old)]
         elif title == 'Ethan Frome':
             sect_summs_new = sect_summs_old
-            sect_summs_new[0] = ('Prologue', sect_summs_new[0][1])
-            sect_summs_new[-1] = ('Epilogue', sect_summs_new[-1][1])
+            sect_summs_new[0] = ('Prologue', *sect_summs_new[0][1:])
+            sect_summs_new[-1] = ('Epilogue', *sect_summs_new[-1][1:])
         elif title == "A Connecticut Yankee in King Arthur's Court":
-            for sect_title, sect_summ in sect_summs_old:
+            for sect_title, sect_summ, link in sect_summs_old:
                 if not sect_title.startswith("Chapter"):
                     continue
-                sect_summs_new.append((sect_title, sect_summ))
-            sect_summs_new[-1] = ('Chapter 36-45', sect_summs_new[-1][1])
+                sect_summs_new.append((sect_title, sect_summ, link))
+            sect_summs_new[-1] = ('Chapter 36-45', sect_summs_new[-1][1], link)
         elif title == 'The Adventures of Tom Sawyer': # chapter 16 is split into 16 and 17
             sect_summs_old = deepcopy(sect_summs_old)
             sect_summs_new = sect_summs_old[0:15]
@@ -576,34 +587,40 @@ def manual_fix_individual(book_summaries):
                     orig = int(chap_title.rsplit(' ', 1)[-1])
                     sect_summs_new.append(('Chapter {}'.format(orig-1), chap_summ))
         elif title == "Tess of the d'Urbervilles":
-            phase_found = False
-            for sect_title, sect_summ in sect_summs_old:
-                if sect_title.startswith('Phase'):
-                    phase_found = True
-                    continue
-                if not phase_found:
-                    continue
-                if sect_title == 'Chapters I–XI':
-                    continue
-                sect_summs_new.append((sect_title, sect_summ))
+            if get_text:
+                phase_found = False
+                for sect_title, sect_summ, link in sect_summs_old:
+                    if sect_title.startswith('Phase'):
+                        phase_found = True
+                        continue
+                    if not phase_found:
+                        continue
+                    if sect_title == 'Chapters I–XI':
+                        continue
+                    sect_summs_new.append((sect_title, sect_summ, link))
+            else:
+                sect_summs_new = [(f"{x[0].split(', ', 1)[-1]}", *x[1:]) for x in sect_summs_old]
         elif title == 'A Portrait of the Artist as a Young Man':
             sect_summs_old = remove_duplicates(sect_summs_old)
-            chap1_summ = []
-            for sect_title, sect_summ in sect_summs_old:
-                if "Part" in sect_title:
-                    chap1_summ.extend(sect_summ)
-                    continue
-                elif chap1_summ:
-                    sect_summs_new.append(('Chapter 1', chap1_summ))
-                    chap1_summ = []
-                sect_summs_new.append((sect_title, sect_summ))
+            if get_text:
+                chap1_summ = []
+                for sect_title, sect_summ, link in sect_summs_old:
+                    if "Part" in sect_title:
+                        chap1_summ.extend(sect_summ)
+                        continue
+                    elif chap1_summ:
+                        sect_summs_new.append(('Chapter 1', chap1_summ))
+                        chap1_summ = []
+                    sect_summs_new.append((sect_title, sect_summ, link))
+            else:
+                sect_summs_new = sect_summs_old
         elif title == 'Of Human Bondage':
             sect_summs_old = remove_duplicates(sect_summs_old)
-            sect_summs_new = [(chap.replace(' and ', '-'), summ) for chap, summ in sect_summs_old]
+            sect_summs_new = [(chap.replace(' and ', '-'), summ, link) for chap, summ, link in sect_summs_old]
         elif title == 'The Secret Sharer':
-            sect_summs_new = [(x[0].replace('Part', 'Chapter'), x[1]) for x in sect_summs_old if x[0].startswith('Part')]
+            sect_summs_new = [(x[0].replace('Part', 'Chapter'), *x[1:]) for x in sect_summs_old if x[0].startswith('Part')]
         elif title == "Moby Dick":  # TODO: scrape with less manual fixing
-            for sect_title, sect_summs in sect_summs_old:
+            for sect_title, sect_summs, links in sect_summs_old:
                 summs_new = []
                 sect_title = sect_title.replace('\xa0', '').replace(' and ', ' - ').split(", “", 1)[0].split(",“", 1)[0].strip()
                 if sect_title.startswith('hapter'):
@@ -628,37 +645,37 @@ def manual_fix_individual(book_summaries):
                         summs_new.append(p)
                 if not sect_title.startswith(('C', 'Epilogue')):
                     continue
-                sect_summs_new.append((sect_title, summs_new))
+                sect_summs_new.append((sect_title, summs_new, links))
             sect_summs_new = remove_duplicates(sect_summs_new)
         elif title == "Gulliver's Travels":
-            for sect_title, sect_summ in sect_summs_old:
+            for sect_title, sect_summ, link in sect_summs_old:
                 if not sect_summ:
                     continue
                 if sect_title.startswith("Part I"):
                     continue
-                sect_summs_new.append((sect_title, sect_summ))
+                sect_summs_new.append((sect_title, sect_summ, link))
         elif title == "Siddhartha":
-            for sect_title, sect_summ in sect_summs_old:
+            for sect_title, sect_summ, link in sect_summs_old:
                 if '-' in sect_title:
                     sect_title = sect_title.split('-', 1)[-1].strip()
                 else:
-                    sect_title, sect_summ = sect_summ[0], sect_summ[1:]
-                sect_summs_new.append((sect_title, sect_summ))
+                    sect_title, sect_summ, link = sect_summ[0], sect_summ[1:]
+                sect_summs_new.append((sect_title, sect_summ, link))
         elif title == 'Sense and Sensibility':
             sect_summs_old = sect_summs_old[0:11] + sect_summs_old[21:]
             offset = 0
-            for i, (sect_title, sect_summ) in enumerate(sect_summs_old, 1):
+            for i, (sect_title, sect_summ, link) in enumerate(sect_summs_old, 1):
                 if sect_title == 'Chapter XIII':  # chapter 12 is missing
                     offset = 1
                 sect_title = 'Chapter {}'.format(i + offset)
-                sect_summs_new.append((sect_title, sect_summ))
+                sect_summs_new.append((sect_title, sect_summ, link))
         elif title == 'White Fang':
-            for sect_title, sect_summ in sect_summs_old:
+            for sect_title, sect_summ, link in sect_summs_old:
                 nums = sect_title.split(' ', 1)[0]
                 part, chapter = nums.split('.', 1)
                 sect_title = 'Part {}: Chapter {}'.format(part, chapter)
-                sect_summs_new.append((sect_title, sect_summ))
-        elif title == 'Bleak House':
+                sect_summs_new.append((sect_title, sect_summ, link))
+        elif title == 'Bleak House' and get_text:
             sect_summs_new = remove_duplicates(sect_summs_old)
             assert sect_summs_new[0][0] == 'Author’s Preface'
             sect_summs_new[0] = ('Preface', sect_summs_new[0][1])
@@ -669,83 +686,96 @@ def manual_fix_individual(book_summaries):
             sect_summs_new[19] = XIX_new
             del sect_summs_new[20]
         elif title == 'Notes from the Underground':
-            sect_summs_new = [(x[0].replace(' C', ': C'), x[1]) for x in sect_summs_old]
+            sect_summs_new = [(x[0].replace(' C', ': C'), *x[1:]) for x in sect_summs_old]
         elif title == "Middlemarch":
             sect_summs_new = remove_duplicates(sect_summs_old)
-            sect_summs_new = [(chap.split('(', 1)[0].strip(), summ) for chap, summ in sect_summs_new]
+            sect_summs_new = [(chap.split('(', 1)[0].strip(), summ, link) for chap, summ, link in sect_summs_new]
         elif title == "Walden":
             sect_summs_new = remove_duplicates(sect_summs_old)
-            sect_summs_new = [(chap.split('‘', 1)[0].strip(), summ) for chap, summ in sect_summs_new]
-            sect_summs_new[-1] = ('Chapter 17-18', sect_summs_new[-1][1])
+            sect_summs_new = [(chap.split('‘', 1)[0].strip(), summ, link) for chap, summ, link in sect_summs_new]
+            sect_summs_new[-1] = ('Chapter 17-18', *sect_summs_new[-1][1:])
         elif title == 'A Tale of Two Cities':
             sect_summs_new = []
-            for sect_title, sect_summ in sect_summs_old:
+            for sect_title, sect_summ, link in sect_summs_old:
                 sect_title = re.sub(r' ?C', ': C', sect_title)
-                sect_summs_new.append((sect_title, sect_summ))
+                sect_summs_new.append((sect_title, sect_summ, link))
             sect_summs_new = remove_duplicates(sect_summs_new)
         elif title == 'A Christmas Carol':
             sect_summs_new = remove_duplicates(sect_summs_old)
-            sect_summs_new = [(chap.split(':', 1)[0], summ) for chap, summ in sect_summs_new if not chap.startswith('Stave 1')]
+            sect_summs_new = [(chap.split(':', 1)[0], summ, link) for chap, summ, link in sect_summs_new if not chap.startswith('Stave 1')]
         elif title == 'The Awakening':
-            sect_summs_new = [(chap.replace('Part', 'Chapter', 1), summ) for chap, summ in sect_summs_old]
-        elif title == 'Around the World in Eighty Days':
+            sect_summs_new = [(chap.replace('Part', 'Chapter', 1), summ, link) for chap, summ, link in sect_summs_old]
+        elif title == 'Around the World in Eighty Days' and get_text:
             sect_summs_old = remove_duplicates(sect_summs_old)
-            sect_summs_new = [(chap.split(':', 1)[0], summ) for chap, summ in sect_summs_old if chap.startswith('Chapter')]
+            sect_summs_new = [(chap.split(':', 1)[0], summ, link) for chap, summ, link in sect_summs_old if chap.startswith('Chapter')]
             assert sect_summs_new[1][0] == 'Chapter 1'
             del sect_summs_new[1]
         elif title == "Fathers and Sons":
-            sect_summs_old = remove_duplicates(sect_summs_old)
-            for sect_title, sect_summ in sect_summs_old:
-                if sect_title.endswith('Analysis'):
-                    continue
-                elif sect_title == 'Chapter 16':  # this one is analysis
-                    continue
-                elif sect_title == 'Chapters 16':
-                    sect_title = 'Chapter 16'
-                sect_summs_new.append((sect_title, sect_summ))
-        elif title == "The Yellow Wallpaper":
+            if get_text:
+                sect_summs_old = remove_duplicates(sect_summs_old)
+                for sect_title, sect_summ, link in sect_summs_old:
+                    if sect_title.endswith('Analysis'):
+                        continue
+                    elif sect_title == 'Chapter 16':  # this one is analysis
+                        continue
+                    elif sect_title == 'Chapters 16':
+                        sect_title = 'Chapter 16'
+                    sect_summs_new.append((sect_title, sect_summ, link))
+            else:
+                sect_summs_new = add_dash_numwords(sect_summs_old)
+        elif title == "The Yellow Wallpaper" and get_text:
             all_sects = [x[1] for x in book_summ.section_summaries]
+            link = book_summ.section_summaries[0][2]
             all_sects = [sublist for l in all_sects for sublist in l]
-            sect_summs_new = [('book', all_sects)]
+            sect_summs_new = [('book', all_sects, link)]
         elif title == 'Anna Karenina':
-            sect_summs_new = [(chap.replace(' section', ': Chapter'), summ) for chap, summ in sect_summs_old]
+            if get_text:
+                sect_summs_new = [(chap.replace(' section', ': Chapter'), summ, link) for chap, summ, link in sect_summs_old]
+            else:
+                sect_summs_new = sect_summs_old
         elif title == 'The Metamorphosis':
-            sect_summs_new = [(chap.replace('Section', 'Part'), summ) for chap, summ in sect_summs_old]
+            sect_summs_new = [(chap.replace('Section', 'Part'), summ, link) for chap, summ, link in sect_summs_old]
         elif title in set(['Vanity Fair', 'Mansfield Park', 'Washington Square', 'The Deerslayer']):
             sect_summs_new = add_dash_numwords(sect_summs_old)
-            if title == 'The Deerslayer':
+            if title == 'The Deerslayer' and get_text:
                 assert sect_summs_new[0][0] == sect_summs_new[1][0]
                 sect_summs_new.pop(0)
                 assert sect_summs_new[-6][0] == 'Chapters Twenty-and - Twenty-One'
                 sect_summs_new[-6] = ('Chapter 20-21', sect_summs_new[-6][1])
         elif title == "The Jungle":
-            sect_summs_new = [(chap.replace('Twenty ', 'Twenty-'), summ) for chap, summ in sect_summs_old]
+            sect_summs_new = [(chap.replace('Twenty ', 'Twenty-'), summ, link) for chap, summ, link in sect_summs_old]
         elif title == 'The Mayor of Casterbridge':
             sect_summs_new = add_dash_numwords(sect_summs_old)
-            assert sect_summs_new[4][0] == 'Twelve Thirteen - Fourteen'
-            sect_summs_new[4] = ('Chapter 12-14', sect_summs_new[4][1])
+            if get_text:
+                assert sect_summs_new[4][0] == 'Twelve Thirteen - Fourteen'
+                sect_summs_new[4] = ('Chapter 12-14', sect_summs_new[4][1])
         elif title == 'Persuasion':
-            assert sect_summs_old[0][0].startswith('Volume')
-            sect_summs_old = sect_summs_old[1:]
-            sect_summs_old = sorted(sect_summs_old, key=lambda x: int(x[0].rsplit('-', 1)[-1]))  # sort by page number
-            offset = 0
-            for sect_title, sect_summ in sect_summs_old:
-                if sect_title == "Chapter I, pages 115-122":
-                    offset = 12
-                sect_title = sect_title.split(',', 1)[0]
-                if offset:
-                    chap = roman_to_int(sect_title.rsplit(' ', 1)[-1])
-                    sect_title = 'Chapter {}'.format(chap+offset)
-                sect_summs_new.append((sect_title, sect_summ))
+            if get_text:
+                assert sect_summs_old[0][0].startswith('Volume')
+                sect_summs_old = sect_summs_old[1:]
+                sect_summs_old = sorted(sect_summs_old, key=lambda x: int(x[0].rsplit('-', 1)[-1]))  # sort by page number
+                offset = 0
+                for sect_title, sect_summ, link in sect_summs_old:
+                    if sect_title == "Chapter I, pages 115-122":
+                        offset = 12
+                    sect_title = sect_title.split(',', 1)[0]
+                    if offset:
+                        chap = roman_to_int(sect_title.rsplit(' ', 1)[-1])
+                        sect_title = 'Chapter {}'.format(chap+offset)
+                    sect_summs_new.append((sect_title, sect_summ, link))
+            else:
+                chaps = ['Chapter 1', 'Chapter 2-3', 'Chapter 6-7', 'Chapter 8-10', 'Chapter 11-12', 'Chapter 13-14', 'Chapter 15-16', 'Chapter 17-18', 'Chapter 19-20', 'Chapter 21-22', 'Chapter 23-24']
+                sect_summs_new = [(chap, *x[1:]) for chap, x in zip(chaps, sect_summs_old)]
+
         elif title == 'Far from the Madding Crowd':
-            sect_summs_new = [(x[0].replace('Ch.', 'Chapter').split(':', 1)[0], x[1]) \
+            sect_summs_new = [(x[0].replace('Ch.', 'Chapter').split(':', 1)[0], *x[1:]) \
                               for x in sect_summs_old]
         elif title == 'The Turn of the Screw':  # novelguide has 2 books with same title, use the other one
             continue
         elif title == 'Turn of the Screw':
-            sect_summs_new = [(x[0].replace('Section', 'Chapter'), x[1]) for x in sect_summs_old]
+            sect_summs_new = [(x[0].replace('Section', 'Chapter'), *x[1:]) for x in sect_summs_old]
         elif title == "The Adventures of Huckleberry Finn":
-            for sect_title, sect_summ in sect_summs_old:
+            for sect_title, sect_summ, link in sect_summs_old:
                 if sect_title == 'Chapter 1-3':
                     sects = sect_summ[0].split("Chapter")
                     for sect in sects:
@@ -754,17 +784,19 @@ def manual_fix_individual(book_summaries):
                         st, ss = sect.split(':', 1)
                         sect_summs_new.append(('Chapter {}'.format(st.strip()), ss))
                 else:
-                    sect_summs_new.append((sect_title, sect_summ))
+                    sect_summs_new.append((sect_title, sect_summ, link))
         elif title == "The Picture of Dorian Gray":
             sect_summs_new = sect_summs_old
-            sect_summs_new[0] = ('Chapters 1-3', sect_summs_new[0][1])
+            sect_summs_new[0] = ('Chapters 1-3', *sect_summs_new[0][1:])
         elif title == 'The Scarlet Pimpernel':
             sect_summs_new = sect_summs_old
-            sect_summs_new[3] = ('Chapter III', sect_summs_new[3][1])
-            sect_summs_new[7] = ('Chapter VII', sect_summs_new[7][1])
+            sect_summs_new[3] = ('Chapter III', *sect_summs_new[3][1:])
+            sect_summs_new[7] = ('Chapter VII', *sect_summs_new[7][1:])
             sect_summs_new.pop(0)
-        elif title == 'Jude the Obscure':
-            for sect_title, sect_summ in sect_summs_old:
+            if not get_text:
+                sect_summs_new = add_dash_numwords(sect_summs_new)
+        elif title == 'Jude the Obscure' and get_text:
+            for sect_title, sect_summ, link in sect_summs_old:
                 if not sect_summ:
                     continue
                 if sect_title == 'At Marygreen':
@@ -778,45 +810,57 @@ def manual_fix_individual(book_summaries):
                 if chap == '1':  # the roman numerals are inaccurate on the original pages
                     part = part_
                 sect_title = 'Part {}: Chapter {}'.format(part, chap)
-                sect_summs_new.append((sect_title, sect_summ))
+                sect_summs_new.append((sect_title, sect_summ, link))
         elif title == 'Ulysses':
-            sect_summs_new = [('Chapter {}'.format(x[0].rsplit(' ', 1)[-1]), x[1]) for x in sect_summs_old]
+            sect_summs_new = [('Chapter {}'.format(x[0].rsplit(' ', 1)[-1]), *x[1:]) for x in sect_summs_old]
         elif title == 'The American':
-            sect_summs_new = [(x[0].replace('Book', 'Chapter'), x[1]) for x in sect_summs_old]
+            sect_summs_new = [(x[0].replace('Book', 'Chapter'), *x[1:]) for x in sect_summs_old]
+            sect_summs_new = add_dash_numwords(sect_summs_new)
         elif title == 'The Brothers Karamazov':
-            book = 0
-            for sect_title, sect_summ in sect_summs_old:
-                if not sect_title.startswith('Chapter'):
-                    continue
-                if sect_title == 'Chapter 1':
-                    book += 1
-                sect_title = "Book {}: {}".format(book, sect_title)
-                sect_summs_new.append((sect_title, sect_summ))
+            if get_text:
+                book = 0
+                for sect_title, sect_summ, link in sect_summs_old:
+                    if not sect_title.startswith('Chapter'):
+                        continue
+                    if sect_title == 'Chapter 1':
+                        book += 1
+                    sect_title = "Book {}: {}".format(book, sect_title)
+                    sect_summs_new.append((sect_title, sect_summ, link))
+            else:
+                for sect_title, sect_summ, link in sect_summs_old:
+                    chap = sect_title[sect_title.find('(')+1:sect_title.find(')')]
+                    if sect_title.startswith('Epilogue'):
+                        book = 'Book 13'
+                    else:
+                        book = re.search('Book \S*', sect_title)[0]
+                    sect_summs_new.append((f'{book}: {chap}', sect_summ, link))
+
         elif title == "Winesburg, Ohio":
             sect_summs_new = [(x[0].replace('&', ',').replace('VI', 'IV').replace('Godliness', 'Godliness Part'), \
-                               x[1]) for x in sect_summs_old]
+                               *x[1:]) for x in sect_summs_old]
         elif title == "War and Peace":
-            ssn = [(standardize_sect_title(x[0], False), x[1]) for x in sect_summs_old]
+            ssn = [(standardize_sect_title(x[0], False), *x[1:]) for x in sect_summs_old]
             book_summ_new = book_summ._replace(section_summaries=ssn)
         elif title == 'The Hound of the Baskervilles':
-            for sect_title, sect_summ in sect_summs_old:
+            for sect_title, sect_summ, link in sect_summs_old:
                 if ' - ' in sect_title:
                     sect_title = sect_title.split(' - ')[0]
                 elif sect_title == 'Chapter 10' and sect_summs_new[-1][0] == 'Chapter 15':
                     continue
                 elif not sect_title.startswith('C'):
                     continue
-                sect_summs_new.append((sect_title, sect_summ))
+                sect_summs_new.append((sect_title, sect_summ, link))
         else:
             sect_summs_new = sect_summs_old
 
         if sect_summs_new:
-            sect_summs_new = [(standardize_sect_title(x[0]), x[1]) for x in sect_summs_new]
+            sect_summs_new = [(standardize_sect_title(x[0]), *x[1:]) for x in sect_summs_new]
             title_new = standardize_title(title)
             if title_new != title:
                 print('renamed {} -> {}'.format(title, title_new))
                 title = title_new
             book_summ_new = book_summ._replace(section_summaries=sect_summs_new, title=title_new)
+            sect_summs_new = []
         book_summaries_new.append(book_summ_new)
         if start:  # for debugging
             print(title, idx)
@@ -847,7 +891,7 @@ def sort_cells(cells):
 
 
 def get_summaries(title_url_map, out_name, use_pickled=False, archived=False, update_old=False,
-                  save_every=5, sleep=0):
+                  get_text=True, save_every=5, sleep=0):
     if use_pickled and os.path.exists(out_name):
         with open(out_name, 'rb') as f1:
             book_summaries = pickle.load(f1)
@@ -865,32 +909,31 @@ def get_summaries(title_url_map, out_name, use_pickled=False, archived=False, up
             time.sleep(sleep)
         author = ''  # TODO: figure this out
         archived_local = archived
-        if archived:
-            orig_url = url
-            url = get_archived(url, update_old)
+
         print('processing', title, url)
         soup = get_soup(url, sleep=SLEEP)
         table = soup.find('div', id='block-booknavigation-3') or soup.find('div', id='block-block-4')
 
         # process plot summary
-        plot_summ = None
-        plot_cell = table.find('a', href=RE_PLOT_LINK)
-        if plot_cell:
-            plot_title = plot_cell.get_text()
-            href = plot_cell['href']
-            if archived:
-                plot_link = get_orig_url(href)
-                plot_link = get_archived(plot_link, update_old)
-                if 'archive.org' not in plot_link: # failed to retrieve archived version
-                    # archived versions of 'the-mayor-of-casterbridge' seem to be corrupted
-                    time.sleep(5.0)
-                    archived_local = False
-            else:
-                plot_link = urllib.parse.urljoin(url, href)
-            if 'Chapter' not in plot_title:
-                plot_summ = process_plot(plot_link)
-            if not plot_summ:
-                print('  no plot summary found', plot_link)
+        plot_summ = ''
+        if get_text:
+            plot_cell = table.find('a', href=RE_PLOT_LINK)
+            if plot_cell:
+                plot_title = plot_cell.get_text()
+                href = plot_cell['href']
+                if archived:
+                    plot_link = get_orig_url(href)
+                    plot_link = get_archived(plot_link, update_old)
+                    if 'archive.org' not in plot_link: # failed to retrieve archived version
+                        # archived versions of 'the-mayor-of-casterbridge' seem to be corrupted
+                        time.sleep(5.0)
+                        archived_local = False
+                else:
+                    plot_link = urllib.parse.urljoin(url, href)
+                if 'Chapter' not in plot_title:
+                    plot_summ = process_plot(plot_link)
+                if not plot_summ:
+                    print('  no plot summary found', plot_link)
 
         # process section summaries
         cells = table.find_all('a', href=RE_SUMM_LINK)
@@ -905,34 +948,34 @@ def get_summaries(title_url_map, out_name, use_pickled=False, archived=False, up
         seen_sects = set()
         for c in cells:
             section_title = get_clean_text(c)
-            section_title_chap = section_title.rsplit(':', 1)[-1]
+            section_title_chap = section_title.rsplit(':', 1)[-1].strip()
             if section_title_chap in seen_sects:
                 print('  seen {} already, skipped'.format(section_title_chap))
                 continue
             if re.match(RE_PLOT, section_title):
                 continue
 
-            if archived and archived_local:
-                link_summ = get_orig_url(c['href'])
-                link_summ = get_archived(link_summ, update_old)
+            link_summ = urllib.parse.urljoin(url, c['href'])
+
+            if get_text:
+                try:
+                    page_summs = process_story(link_summ)
+                except AttributeError:  # page failed to load, try again
+                    print('  retrying after 5 seconds...')
+                    time.sleep(5.0)
+                    page_summs = process_story(link_summ)
+
+                if page_summs:
+                    section_summs.extend(page_summs)
+                    seen_sects.add(section_title_chap)
             else:
-                link_summ = urllib.parse.urljoin(url, c['href'])
-
-            try:
-                page_summs = process_story(link_summ)
-            except AttributeError:  # page failed to load, try again
-                print('  retrying after 5 seconds...')
-                time.sleep(5.0)
-                page_summs = process_story(link_summ)
-
-            if page_summs:
-                section_summs.extend(page_summs)
-                seen_sects.add(section_title_chap)
+                section_summs.append((section_title_chap, [], link_summ))
         if not section_summs:
             print('  could not find summaries for {}'.format(title))
             continue
         book_summ = BookSummary(title=title, author=author, genre=None, plot_overview=plot_summ,
-                                source='novelguide', section_summaries=section_summs)
+                                source='novelguide', section_summaries=section_summs, summary_url=url)
+
         book_summaries.append(book_summ)
         num_books = len(book_summaries)
         if num_books > 1 and num_books % save_every == 0:
@@ -956,21 +999,25 @@ if __name__ == "__main__":
         print('limiting to books from', CATALOG_NAME)
         title_set = set(catalog.keys())
 
-    if args.archived_list:
-        books_list = get_archived(BOOKS_LIST)
+    if args.archived:
+        books_list = get_archived(BOOKS_LIST, year=2022)
     else:
         books_list = BOOKS_LIST
     title_url_map = get_title_url_map(books_list, title_set=title_set)
     print('{} book pages total'.format(len(title_url_map)))
-    book_summaries = get_summaries(title_url_map, args.out_name, args.use_pickled, args.archived,
-                                  args.update_old, args.save_every, args.sleep)
-    # with open(args.out_name, 'rb') as f:
-    #     book_summaries = pickle.load(f)
+    # book_summaries = get_summaries(title_url_map, args.out_name, args.use_pickled, args.archived,
+    #                               args.update_old, args.get_text, args.save_every, args.sleep)
+    with open(args.out_name, 'rb') as f:
+        book_summaries = pickle.load(f)
 
     book_summaries_overlap = gen_gutenberg_overlap(book_summaries, catalog, filter_plays=True)
     book_summaries_overlap = manual_fix(book_summaries_overlap)
-    book_summaries_overlap = manual_fix_individual(book_summaries_overlap)
+    book_summaries_overlap = manual_fix_individual(book_summaries_overlap, args.get_text)
 
     with open(args.out_name_overlap, 'wb') as f:
         pickle.dump(book_summaries_overlap, f)
-    print('wrote to {}'.format(args.out_name_overlap))
+    print('wrote summaries to {}'.format(args.out_name_overlap))
+
+    out_name = 'urls/chapter-level/novelguide.tsv'
+    write_sect_links(out_name, book_summaries_overlap)
+    print(f'wrote urls to {out_name}')

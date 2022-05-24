@@ -20,7 +20,7 @@ from scrape_vars import TO_DELETE, EXCLUDED_IDS, ALT_ORIG_MAP, CATALOG_NAME, CAT
                         RE_CHAPTER_NOSPACE, RE_CHAPTER_DASH, RE_CHAPTER, RE_CHAPTER_START, RE_PART
 
 
-BookSummary = namedtuple('BookSummary', ['title', 'author', 'genre', 'plot_overview', 'source', 'section_summaries'])
+BookSummary = namedtuple('BookSummary', ['title', 'author', 'genre', 'plot_overview', 'source', 'section_summaries', 'summary_url'])
 
 ###
 # Text processing and BS4 helper functions
@@ -36,6 +36,19 @@ def get_soup(url, encoding=None, sleep=0):
     if sleep:
         time.sleep(sleep)
     return BeautifulSoup(page.content, 'html5lib', from_encoding=encoding)
+
+def write_sect_links(outname, book_summaries):
+    os.makedirs(os.path.dirname(outname), exist_ok=True)
+    seen = set()
+    with open(outname, 'w') as f:
+        for idx, book_summ in enumerate(book_summaries):
+            for chapter, _, link in book_summ.section_summaries:
+                chap_id = f'{book_summ.title}\t{chapter}'
+                if chap_id in seen:
+                    print('warning: duplicated at', chap_id, idx)
+                    # import pdb; pdb.set_trace()
+                seen.add(chap_id)
+                f.write(f'{book_summ.title}\t{chapter}\t{link}\n')
 
 
 def get_absolute_links(links, base_url):
@@ -206,7 +219,7 @@ def standardize_sect_title(candidate, process_ord=True):
             candidate = candidate.replace(ord_match[0], ord2card[ord_match[0]])
     for x, y in replace_d:
         candidate = candidate.replace(x, y)
-    candidate = re.sub(r'\s*-\s*', ' - ', candidate)
+    candidate = re.sub(r'\s*-\s*', '-', candidate)
     return titlecase(candidate.strip())
 
 
