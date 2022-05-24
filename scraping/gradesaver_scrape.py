@@ -21,8 +21,8 @@ from scrape_vars import NON_NOVEL_TITLES, RE_SUMM, CATALOG_NAME
 
 PANE_NAME = 'navSection__list js--collapsible'
 BASE_URL = 'https://www.gradesaver.com/'
-OUT_NAME_ALL = 'scraping/summaries_gradesaver_all.pk'
-OUT_NAME_OVERLAP = 'scraping/summaries_gradesaver.pk'
+OUT_NAME_ALL = 'pks/summaries_gradesaver_all.pk'
+OUT_NAME_OVERLAP = 'pks/summaries_gradesaver.pk'
 BOOKS_LIST = 'https://www.gradesaver.com/study-guides'
 HEADINGS = ['finale:', 'analysis', 'part', 'chapter', 'book', 'act', 'volume', 'section', 'opening prelude',
             'summary', 'summaries', 'summary:', 'summaries:']
