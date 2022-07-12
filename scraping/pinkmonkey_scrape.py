@@ -23,7 +23,7 @@ from scrape_lib import get_soup, get_clean_text, get_absolute_links, find_all_st
 from scrape_vars import CATALOG_NAME, NON_NOVEL_TITLES
 
 tups = [
-    ('monkeynotes', 'http://www.pinkmonkey.com', 'http://www.pinkmonkey.com/booknotes/notes1.asp'),
+    ('monkeynotes', 'https://pinkmonkey.com', 'https://pinkmonkey.com/booknotes/notes1.asp'),
     ('barrons', 'http://barronsbooknotes.com/', 'http://barronsbooknotes.com/'),
 ]
 OUT_NAME_ALL = 'pks/summaries_pinkmonkey_all.pk'
@@ -392,7 +392,7 @@ def get_summaries(page_title_map, out_name, use_pickled=False, archived=False, u
             continue
 
         book_summ = BookSummary(title=title, author=author, genre=None, plot_overview=None, source=source,
-                                section_summaries=sect_summs)
+                                section_summaries=sect_summs, summary_url=page)
         book_summaries.append(book_summ)
         num_books = len(book_summaries)
         if num_books > 1 and num_books % save_every == 0:
