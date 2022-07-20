@@ -185,10 +185,10 @@ def process_book_summary(book_summary, title_sect_map, base_d):
 
     if not title_sect_map[title]:
         print('{} is a new book'.format(title), source)
-    for sect, sect_summ in section_summaries:
+    for sect, sect_summ, link in section_summaries:
         sect = re.sub(r'\s*-\s*', '-', sect)
         sect_id = get_sect_id(title, sect)
-        summ_d = {'summary': sect_summ, 'source': source}
+        summ_d = {'summary': sect_summ, 'source': source, 'link': link}
         if not sect_summ:
             # print(sect_id, 'empty sect_summ, skipped')
             error_sects.append(sect)
@@ -202,6 +202,7 @@ def process_book_summary(book_summary, title_sect_map, base_d):
                 continue
             base_d[sect_id] = {'id': sect_id, 'summaries': []}
             base_d[sect_id]['raw_text'] = section_text
+
         base_d[sect_id]['summaries'].append(summ_d)
         # if source == 'barrons' and title == 'The Jungle':
         #     import pdb; pdb.set_trace()
@@ -231,7 +232,7 @@ def get_split_ds(base_d):
     return split_ds
 
 
-def get_base_ds(base_d):
+def get_base_ds_source(base_d):
     """ Returns dict base_ds, which has entries
         str source_name: summary_d
     """
@@ -242,18 +243,19 @@ def get_base_ds(base_d):
         for summary_d in item['summaries']:
             source = summary_d['source']
             text = summary_d['summary']
+            link = summary_d['link']
 
             title, sect = split_title_sect(sect_id)
             if title not in raw_texts:
                 continue
             if text:
-                base_ds[source][title][sect] = text
+                base_ds[source][title][sect] = (text, link)
             book_chapters = raw_texts[title].keys()
             sect_titles_expanded[sect_id] = get_section_titles(book_chapters, sect, title)
     return base_ds, sect_titles_expanded
 
 
-def compose_multi_sect(base_d, sect_titles_expanded):
+def compose_multi_sect(base_d, base_ds_source, sect_titles_expanded):
     base_d_expanded = deepcopy(base_d)
     for sect_id, item in base_d.items():
         title, sect = split_title_sect(sect_id)
@@ -262,7 +264,7 @@ def compose_multi_sect(base_d, sect_titles_expanded):
         sect_titles = sect_titles_expanded[sect_id]
         if len(sect_titles) < 2: # not multi-part
             continue
-        for source, base_d_source in base_ds.items():
+        for source, base_d_source in base_ds_source.items():
             source_title_d = base_d_source[title]
             if not source_title_d: continue
             if sect in source_title_d:
@@ -270,6 +272,7 @@ def compose_multi_sect(base_d, sect_titles_expanded):
                 continue
 
             new_sect = []
+            links = []
             added_sects_all = set()
             i = 0
             sect_title_len = len(sect_titles)
@@ -279,11 +282,12 @@ def compose_multi_sect(base_d, sect_titles_expanded):
                 for j in range(sect_title_len - 1, i, -1):
                     cand = '{}-{}'.format(chap, sect_titles[j].rsplit(' ', 1)[-1])
                     if cand in source_title_d:
-                        curr_text = source_title_d[cand]
+                        curr_text, link = source_title_d[cand]
                         if isinstance(curr_text, list):
                             new_sect.extend(curr_text)
                         elif isinstance(curr_text, str):
                             new_sect.append(curr_text)
+                        links.append(link)
                         cand_id = '{}.{}'.format(title, cand)
                         added_sects = sect_titles_expanded[cand_id]
                         assert not added_sects_all.intersection(added_sects)
@@ -304,18 +308,19 @@ def compose_multi_sect(base_d, sect_titles_expanded):
                         print(source_title_d.keys())
                     assert not added_sects_all.intersection(added_sects)
                     added_sects_all.update(added_sects)
-                    curr_text = source_title_d[chap]
+                    curr_text, link = source_title_d[chap]
                     if isinstance(curr_text, list):
                         new_sect.extend(curr_text)
                     elif isinstance(curr_text, str):
                         new_sect.append(curr_text)
+                    links.append(link)
                     i += 1
                 if sect_titles[-1] in added_sects_all:
                     break
 
             if sect_titles[-1] in added_sects_all:
                 assert(added_sects_all == set(sect_titles))
-                summ_d = {'summary': new_sect, 'source': source}
+                summ_d = {'summary': new_sect, 'source': source, 'link': links}
                 base_d_expanded[sect_id]['summaries'].append(summ_d)
 
     return base_d_expanded
@@ -389,8 +394,8 @@ if __name__ == "__main__":
     print_split_ds(base_d)
 
     print('\ncomposing multi-chapter summaries from single-chapter summaries...')
-    base_ds, sect_titles_expanded = get_base_ds(base_d)
-    base_d_expanded = compose_multi_sect(base_d, sect_titles_expanded)
+    base_ds_source, sect_titles_expanded = get_base_ds_source(base_d)
+    base_d_expanded = compose_multi_sect(base_d, base_ds_source, sect_titles_expanded)
     split_ds = print_split_ds(base_d_expanded)
 
     os.makedirs(args.out_dir, exist_ok=True)

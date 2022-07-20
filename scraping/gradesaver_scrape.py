@@ -226,13 +226,13 @@ def flatten(book_summaries, get_text=True):
         sect_summs_old = book_summ.section_summaries
         for sect_tup in sect_summs_old:
             multi_sect_title, sect_summs, link = sect_tup
-
             if len(sect_summs) == 1 and (not sect_summs[0][0] or re.match(RE_SUMM, sect_summs[0][0])):
                 sect_summs[0] = (multi_sect_title, *sect_summs[0][1:])
             elif len(sect_summs) == 2 and not sect_summs[0][0] and not sect_summs[0][1][0] and \
                 re.match(RE_SUMM, sect_summs[1][0]):
                 sect_summs[1] = (multi_sect_title, *sect_summs[1][1:])
                 del sect_summs[0]
+            sect_summs = [(*x, link) for x in sect_summs]
             sect_summ_new.extend(sect_summs)
         book_summ_new = book_summ._replace(section_summaries=sect_summ_new)
         book_summaries_new.append(book_summ_new)
@@ -275,7 +275,7 @@ def manual_fix(book_summaries, get_text=True):
 
 
                 if len(sect_summ1[0]) > 100:
-                    section_summaries_new.append((chap_title, sect_summ1))
+                    section_summaries_new.append((chap_title, sect_summ1, link))
                 else:  # split on a subtitle, handle later
                     section_summaries_new.append((chap_title_orig, sect_summ_orig, link))
             # elif not chap
@@ -362,8 +362,8 @@ def manual_fix_individual(book_summaries, get_text=True):
                 sect_summs_new.append((chap_title, sect_summ, link))
         elif title == 'Ethan Frome' and get_text:
             assert sect_summs_old[0][0] == sect_summs_old[1][0]== ''
-            book_summ.section_summaries[0] = ('Prologue', book_summ.section_summaries[1][1])
-            book_summ.section_summaries[-1] = ('Epilogue', book_summ.section_summaries[-1][1])
+            book_summ.section_summaries[0] = ('Prologue', *book_summ.section_summaries[1][1:])
+            book_summ.section_summaries[-1] = ('Epilogue', *book_summ.section_summaries[-1][1:])
             del book_summ.section_summaries[1]
             book_summ_new = book_summ
         elif title == 'Far from the Madding Crowd':
@@ -495,7 +495,7 @@ def manual_fix_individual(book_summaries, get_text=True):
         elif title == 'Wuthering Heights':
             for i, (chap_title, sect_summ, link) in enumerate(sect_summs_old):
                 if not sect_summ and get_text:
-                    next_chap, next_summ = sect_summs_old[i+1]
+                    next_chap, next_summ, link = sect_summs_old[i+1]
                     # Chapter 25 section has a typo https://www.gradesaver.com/wuthering-heights/study-guide/summary-chapters-21-25
                     if not next_summ and not chap_title == 'Chapter 25':
                         print("need to update Wuthering Heights")
@@ -506,7 +506,7 @@ def manual_fix_individual(book_summaries, get_text=True):
         elif title == "The Yellow Wallpaper" and get_text:
             all_sects = [x[1] for x in sect_summs_old]
             all_sects = [sublist for l in all_sects for sublist in l]
-            sect_summs_new = [('book', all_sects)]
+            sect_summs_new = [('book', all_sects, sect_summs_old[0][2])]
         elif title in set(["The Mill on the Floss", 'My Antonia', "A Tale of Two Cities",
                            'War and Peace']) and get_text:  # multibook
             book_count = 0
@@ -584,7 +584,7 @@ def manual_fix_individual(book_summaries, get_text=True):
             assert sect_summs_old[1][0] == 'Chapters 5-19'
             sect_summs_new = sect_summs_old
             sect_summs_new[1] = ('Chapters 5-9', *sect_summs_old[1][1:])
-        elif title == 'The Trial' and not get_text:
+        elif title == 'The Trial':
             continue
         elif not get_text and title == 'The War of the Worlds':
             for (chap_title, sect_summ, link) in sect_summs_old:
@@ -633,8 +633,8 @@ if __name__ == "__main__":
         base_url = BASE_URL
 
     book_summaries = get_summaries(books_list, base_url, args.out_name, PANE_NAME, args.use_pickled,
-                                   title_set, args.archived, args.update_old, args.get_text,
-                                   args.save_every, args.sleep)
+                                  title_set, args.archived, args.update_old, args.get_text,
+                                  args.save_every, args.sleep)
     # with open(args.out_name, 'rb') as f1:
     #     book_summaries = pickle.load(f1)
 

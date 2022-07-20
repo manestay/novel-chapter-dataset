@@ -33,7 +33,8 @@ def find_dict(dd, title, action):
             if not book.section_summaries:
                 print('NO CHAPTERS')
             for ss in book.section_summaries:
-                print(ss[0], ss[1][0:5], '...')
+                print(ss[0], ss[1][0:5], '... ', end='')
+                print(ss[2] if len(ss) == 3 else '')
     if action == 'del' and to_pop:
         dd.pop(to_pop)
     return found
@@ -51,12 +52,16 @@ def find_list(dd, title, action, flag=''):
                 dd.pop(i)
             elif action == 'show':
                 for ss in x.section_summaries:
-                    if isinstance(ss[1][0], tuple):
+                    if not ss[1]:
+                        print(ss[0], '{empty}', ss[2] if len(ss) == 3 else '')
+                    elif isinstance(ss[1][0], tuple):
                         for ss1 in ss[1]:
-                            print(ss1[0], ss1[1][0:100], '...')
+                            print(ss1[0], ss1[1][0:100], '... ', end='')
+                            print(ss[2] if len(ss) == 3 else '')
                     else:
                         try:
-                            print(ss[0], ss[1][0][0:100], '...')
+                            print(ss[0], ss[1][0][0:100], '... ', end='')
+                            print(ss[2] if len(ss) == 3 else '')
                         except IndexError:
                             print(f'ERROR: {ss[0]} has no summary content')
     return found
